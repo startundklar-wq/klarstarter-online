@@ -2171,6 +2171,67 @@
       });
     }
 
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("blob-read-failed"));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function languageForTranscription() {
+      if ((state.language || "").toLowerCase().startsWith("de")) return "de";
+      return "";
+    }
+
+    function applyTranscriptToUi(target) {
+      if (!target) return;
+      const transcriptEl = document.getElementById("transcriptInput");
+      if (!transcriptEl) return;
+      const context = activeContextStore();
+      if (context && context.target === target) {
+        transcriptEl.value = target.transcript || "";
+      }
+    }
+
+    async function transcribeBlobViaApi(blob, target, speakerLabel = "") {
+      if (!blob || !target) return false;
+      try {
+        const audioBase64 = await blobToDataUrl(blob);
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audioBase64,
+            mimeType: blob.type || "audio/webm",
+            language: languageForTranscription()
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) return false;
+        const spoken = String(result.text || "").trim();
+        if (!spoken) return false;
+        const prefix = speakerLabel ? `[${speakerLabel}] ` : "";
+        target.transcript = `${target.transcript ? `${target.transcript}\n` : ""}${prefix}${spoken}`;
+        applyTranscriptToUi(target);
+        state.micStatus = "Mikrofon gestoppt. Audio wurde transkribiert.";
+        render();
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function describeMicError(error) {
+      const name = error && error.name ? error.name : "";
+      if (name === "NotAllowedError") return "Mikrofon blockiert. Bitte Browser-Berechtigung fuer Mikrofon erlauben.";
+      if (name === "NotFoundError") return "Kein Mikrofon gefunden. Bitte Geraet pruefen.";
+      if (name === "NotReadableError") return "Mikrofon wird bereits von einer anderen App genutzt.";
+      if (name === "SecurityError") return "Mikrofonzugriff aus Sicherheitsgruenden blockiert.";
+      return "Mikrofon konnte nicht gestartet werden.";
+    }
+
     async function startMic(target) {
       if (state.micRunning) return;
       if (!audioAllowedByAge()) {
@@ -2235,14 +2296,18 @@
           rec.onerror = () => {};
           micRuntime.recognition = rec;
           rec.start();
+        } else {
+          state.micStatus = "Mikrofon laeuft ohne Live-Transkript. Beim Stop wird Server-Transkription versucht.";
         }
 
         state.micRunning = true;
-        state.micStatus = "Mikrofon laeuft.";
+        if (SpeechApi) {
+          state.micStatus = "Mikrofon laeuft.";
+        }
         render();
       } catch (error) {
         state.micRunning = false;
-        state.micStatus = "Mikrofon konnte nicht gestartet werden.";
+        state.micStatus = describeMicError(error);
         render();
       }
     }
@@ -2252,14 +2317,28 @@
       state.micRunning = false;
       state.sampleRecordingKind = null;
       state.micStatus = "Mikrofon gestoppt.";
+      const targetRef = micRuntime.target;
+      const speechAvailable = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+      const speakerLabel = state.mode === "coach" ? state.activeSpeaker : "";
       if (micRuntime.recognition) {
         try { micRuntime.recognition.stop(); } catch (error) {}
       }
       if (micRuntime.recorder) {
-        micRuntime.recorder.onstop = () => {
+        micRuntime.recorder.onstop = async () => {
           const blob = micRuntime.chunks.length > 0 ? new Blob(micRuntime.chunks, { type: micRuntime.chunks[0].type || "audio/webm" }) : null;
           if (saveBlobTarget && blob) saveBlobTarget.blob = blob;
           micRuntime.chunks = [];
+          if (!blob || !targetRef) return;
+          const transcriptEmpty = !String(targetRef.transcript || "").trim();
+          const shouldTranscribe = !speechAvailable || transcriptEmpty;
+          if (!shouldTranscribe) return;
+          state.micStatus = "Audio wird transkribiert ...";
+          render();
+          const ok = await transcribeBlobViaApi(blob, targetRef, speakerLabel);
+          if (!ok && !speechAvailable) {
+            state.micStatus = "Keine Live-Spracherkennung im Browser und Server-Transkription nicht verfuegbar.";
+            render();
+          }
         };
         try { micRuntime.recorder.stop(); } catch (error) {}
       }
