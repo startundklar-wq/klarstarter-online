@@ -1,0 +1,3080 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Klarstarter App</title>
+  <style>
+    :root {
+      --ink: #1f2933;
+      --muted: #5a6974;
+      --line: #d7dee3;
+      --paper: #f7f8f9;
+      --surface: #ffffff;
+      --teal: #2d7c7a;
+      --coral: #db6e5d;
+      --amber: #b88512;
+      --blue: #4068c8;
+      --green: #2f8a50;
+      --radius: 8px;
+      --shadow: 0 12px 28px rgba(22, 34, 44, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+      color: inherit;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 18px auto 24px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 360px);
+      gap: 18px;
+      align-items: center;
+      background: #fcfdfe;
+    }
+
+    .title-wrap strong {
+      display: block;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    .title-wrap span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-bottom: 7px;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #e8edf1;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      transition: width 180ms ease;
+      background: linear-gradient(90deg, var(--teal), var(--blue), var(--amber));
+    }
+
+    .screen {
+      display: none;
+      padding: clamp(18px, 3vw, 30px);
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .split {
+      grid-template-columns: minmax(0, 1.28fr) minmax(290px, 0.72fr);
+      align-items: start;
+    }
+
+    .band {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: #fff;
+    }
+
+    .band h2,
+    .band h3 {
+      margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+
+    .intro-headline {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-weight: 650;
+      font-size: 0.92rem;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 11px;
+      background: #fff;
+    }
+
+    .field select {
+      appearance: none;
+    }
+
+    .checks {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .check-row {
+      display: flex;
+      gap: 8px;
+      align-items: start;
+      font-size: 0.94rem;
+    }
+
+    .policy-block {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfdff;
+      padding: 10px 11px;
+      margin-top: 10px;
+    }
+
+    .policy-block details + details {
+      margin-top: 8px;
+    }
+
+    .policy-block summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #284457;
+      list-style: none;
+    }
+
+    .policy-block summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .policy-block summary::before {
+      content: "+ ";
+      color: #456a86;
+      font-weight: 900;
+    }
+
+    .policy-block details[open] summary::before {
+      content: "- ";
+    }
+
+    .policy-content {
+      margin-top: 8px;
+      color: #314755;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      display: grid;
+      gap: 7px;
+    }
+
+    .policy-content ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-weight: 700;
+      background: #edf2f6;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      color: #fff;
+      background: var(--teal);
+      border-color: var(--teal);
+    }
+
+    .btn.secondary {
+      border-color: var(--line);
+      background: #fff;
+    }
+
+    .btn.warn {
+      color: #fff;
+      background: var(--coral);
+      border-color: var(--coral);
+    }
+
+    .btn.good {
+      color: #fff;
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      min-height: 36px;
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .chip.active {
+      background: #d9f1ef;
+      border-color: #63a8a4;
+      color: #154f4d;
+    }
+
+    .chip.done {
+      background: #e8f5eb;
+      border-color: #7cbe93;
+      color: #245b38;
+    }
+
+    .state-line {
+      margin: 8px 0 0;
+      min-height: 1.4em;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .phase-list,
+    .status-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .phase-row {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 11px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .phase-row.current {
+      border-color: var(--blue);
+      box-shadow: inset 0 0 0 1px var(--blue);
+    }
+
+    .phase-row.done {
+      border-color: #8ccc9f;
+      background: #f2fbf5;
+    }
+
+    .phase-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #fff;
+      background: var(--blue);
+    }
+
+    .phase-row.done .phase-badge {
+      background: var(--green);
+    }
+
+    .small-note {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+
+    .question-title {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .follow-list {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .follow-list li {
+      color: #334450;
+    }
+
+    .speaker-wrap {
+      display: none;
+      gap: 7px;
+      margin: 10px 0;
+    }
+
+    .speaker-wrap.active {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .speaker-btn {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .speaker-btn.active {
+      background: #e8eefb;
+      border-color: #7896e1;
+      color: #1d407f;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      resize: vertical;
+    }
+
+    .module-work {
+      border: 1px dashed #b9c8d4;
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #fbfdff;
+    }
+
+    .module-title {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .focus-word {
+      min-height: 82px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-align: center;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .swipe-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 9px;
+    }
+
+    .pill {
+      display: inline-flex;
+      min-height: 26px;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      border: 1px solid #ccd8e1;
+      font-size: 0.8rem;
+      background: #f7fafc;
+      color: #3f5463;
+    }
+
+    .summary-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 11px;
+      background: #fff;
+    }
+
+    .sentence-option {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 11px;
+      background: #fff;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .sentence-option.active {
+      border-color: #4a74d6;
+      box-shadow: inset 0 0 0 1px #4a74d6;
+      background: #f5f8ff;
+    }
+
+    .sentence-option .small-note {
+      display: block;
+      margin-top: 4px;
+    }
+
+    .error {
+      color: #a5372b;
+      font-weight: 700;
+      min-height: 1.35em;
+      margin: 8px 0 0;
+    }
+
+    .ok {
+      color: #216439;
+      font-weight: 700;
+      min-height: 1.35em;
+      margin: 8px 0 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .split {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+
+      .screen {
+        padding: 14px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-live="polite">
+    <header class="topbar">
+      <div class="title-wrap">
+        <strong>Klarstarter Coaching-App</strong>
+        <span>STAR Ablauf mit Mikrofon, Vertiefungen, KI-Filter und PDF-Ergebnis. Hinweis: KI dient nur zur Strukturierung.</span>
+      </div>
+      <div>
+        <div class="progress-meta">
+          <span id="progressLabel">Start</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="btn-row" style="margin-top:8px; justify-content:flex-end">
+          <button class="btn warn" id="emergencyDeleteBtn" type="button">Sitzung sofort abbrechen & alle Daten loeschen</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="screen active" id="introScreen">
+      <div class="grid split">
+        <div class="grid">
+          <section class="band">
+            <h1 class="intro-headline">Gemeinsam Klarheit finden.</h1>
+            <p class="lead">Zuerst unterschreiben wir Datenschutz und Ethikkodex. Danach startet der STAR-Prozess mit Hauptfragen, laufendem Mikrofon und optionalen Vertiefungen.</p>
+          </section>
+
+          <section class="band">
+            <h2>1) Rahmen</h2>
+            <div class="btn-row" id="languageButtons"></div>
+            <p class="small-note">Die App arbeitet in Schweizerdeutsch und Hochdeutsch.</p>
+            <div class="btn-row" id="modeButtons"></div>
+            <div class="form-grid" style="margin-top:10px">
+              <div class="field">
+                <label for="ageCategorySelect">Alterskategorie</label>
+                <select id="ageCategorySelect">
+                  <option value="under_13">Unter 13 Jahre</option>
+                  <option value="13_15">13 bis 15 Jahre</option>
+                  <option value="16_17">16 bis 17 Jahre</option>
+                  <option value="adult">Ab 18 Jahren</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="flowVariantSelect">Coaching-Modus</label>
+                <select id="flowVariantSelect">
+                  <option value="quick">5 Minuten (Schnellmodus)</option>
+                  <option value="deep">10 Minuten (Vertiefungsmodus)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid" style="margin-top:10px">
+              <div class="field">
+                <label for="aiProviderSelect">KI-Anbieter</label>
+                <select id="aiProviderSelect">
+                  <option value="openai">ChatGPT (OpenAI)</option>
+                  <option value="gemini">Gemini (Google)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="aiModelInput">Modell (optional)</label>
+                <input id="aiModelInput" placeholder="z. B. gpt-5.2 oder gemini-2.0-flash">
+              </div>
+            </div>
+            <p class="small-note">Bei der Online-Version werden die STAR-Antworten fuer die Strukturierung an den gewaehlten KI-Dienst gesendet.</p>
+            <p class="small-note" id="ageAudioHint">Audio gemaess Alterskategorie verfuegbar.</p>
+          </section>
+
+          <section class="band">
+            <h2>2) Daten und Unterschrift</h2>
+            <div class="form-grid">
+              <div class="field">
+                <label for="clientNameInput">Kunde / Klient Alias (kein Klarname)</label>
+                <input id="clientNameInput" autocomplete="name">
+              </div>
+              <div class="field">
+                <label for="coachNameInput">Coach Alias (bei "mit Coach")</label>
+                <input id="coachNameInput" autocomplete="name">
+              </div>
+            </div>
+
+            <div class="policy-block">
+              <details>
+                <summary>Datenschutzrichtlinie (Entwurf, Stand 23. Mai 2026)</summary>
+                <div class="policy-content">
+                  <p>Diese App dient dem Klarstarter-Kurzcoaching. Sie unterstuetzt die strukturierte Reflexion in den Bereichen S, T, A und R und erstellt auf Wunsch ein PDF-Ergebnis.</p>
+                  <p><strong>Verantwortliche Stelle:</strong> Bitte hier eure offizielle Organisation, Adresse und Kontakt-E-Mail eintragen.</p>
+                  <p><strong>Verarbeitete Daten:</strong></p>
+                  <ul>
+                    <li>Stammdaten: Name Kunde/Klient, Name Coach (falls verwendet).</li>
+                    <li>Inhaltsdaten: gesprochene und geschriebene Antworten, ausgewaehlte Begriffe, Vertiefungsergebnisse.</li>
+                    <li>Audio: Stimmproben und Gespraechsaudio nur innerhalb der Sitzung im Browser.</li>
+                    <li>Ergebnisdaten: Klarstarter-Satz und PDF-Inhalt.</li>
+                  </ul>
+                  <p><strong>Zweck:</strong> Durchfuehrung des Coachinggespraechs, Verdichtung zentraler Aussagen und Erstellung einer Ergebniszusammenfassung fuer den Kunden.</p>
+                  <p><strong>Rechtsgrundlage:</strong> Einwilligung der betroffenen Person vor Start des Prozesses (Datenschutz + Ethikkodex + Unterschrift).</p>
+                  <p><strong>Speicherort:</strong> Lokale Nutzung ist moeglich. In der Online-Version kann fuer die KI-Auswertung eine Uebermittlung der STAR-Antworten an den gewaehlten KI-Dienst erfolgen (ChatGPT oder Gemini).</p>
+                  <p><strong>Loeschkonzept:</strong> Nach PDF-Erstellung oder manuellem Reset werden Sitzungsdaten in der App geloescht. Wenn ein Browser oder Geraet technisch zwischenspeichert, ist zusaetzlich ein lokales Browser-Reset zu empfehlen.</p>
+                  <p><strong>Weitergabe:</strong> Keine Weitergabe an Dritte ohne separate, informierte Einwilligung.</p>
+                  <p><strong>Betroffenenrechte:</strong> Auskunft, Berichtigung, Loeschung, Einschraenkung, Widerspruch und Widerruf einer erteilten Einwilligung fuer zukuenftige Verarbeitungen.</p>
+                  <p><strong>Sensible Inhalte:</strong> Es werden moeglicherweise persoenliche und besonders schuetzenswerte Angaben genannt. Diese sind vertraulich zu behandeln.</p>
+                  <p><strong>Hinweis:</strong> Dieser Text ist ein arbeitsfaehiger Entwurf und ersetzt keine rechtliche Endpruefung.</p>
+                </div>
+              </details>
+
+              <details>
+                <summary>Ethikkodex (Entwurf, Stand 23. Mai 2026)</summary>
+                <div class="policy-content">
+                  <p>Der Ethikkodex sichert einen respektvollen, sicheren und selbstbestimmten Coachingrahmen.</p>
+                  <ul>
+                    <li><strong>Freiwilligkeit:</strong> Teilnahme, Antworten und Vertiefungen sind freiwillig und koennen jederzeit unterbrochen oder beendet werden.</li>
+                    <li><strong>Selbstbestimmung:</strong> Kunde/Klient entscheidet ueber Inhalte, Tiefe und Formulierung; Vorschlaege sind Angebote, keine Vorgaben.</li>
+                    <li><strong>Wuerde und Schutz:</strong> Keine Bloessstellung, kein Druck, keine entwertende Sprache.</li>
+                    <li><strong>Nicht-Diskriminierung:</strong> Keine Benachteiligung aufgrund Herkunft, Geschlecht, Religion, Alter, Behinderung, sexueller Orientierung oder sozialem Status.</li>
+                    <li><strong>Rollenklarheit:</strong> Die App und das Kurzcoaching ersetzen keine Psychotherapie, keine medizinische, juristische oder finanzielle Beratung.</li>
+                    <li><strong>Transparenz bei KI:</strong> KI-Vorschlaege dienen der Strukturierung und koennen Fehler enthalten; finale Deutung erfolgt gemeinsam durch Mensch und Kunde.</li>
+                    <li><strong>Vertraulichkeit:</strong> Gespraechsinhalte werden nur im vereinbarten Rahmen genutzt und nicht ohne Einwilligung weitergegeben.</li>
+                    <li><strong>Grenzen erkennen:</strong> Bei akuter Krise, Selbst- oder Fremdgefaehrdung ist das Coaching zu stoppen und an geeignete Fachstellen zu verweisen.</li>
+                    <li><strong>Ressourcenorientierung:</strong> Fokus auf Staerken, Entwicklung, tragfaehige Beduerfnisse und realistische naechste Schritte.</li>
+                    <li><strong>Qualitaet:</strong> Regelmaessige Reflexion und Weiterentwicklung des Prozesses sowie sorgfaeltiger Umgang mit Feedback.</li>
+                  </ul>
+                  <p><strong>Hinweis:</strong> Dieser Ethikkodex ist ein belastbarer Entwurf und kann mit eurem offiziellen Verbandstext abgeglichen werden.</p>
+                </div>
+              </details>
+            </div>
+
+            <div class="checks">
+              <label class="check-row"><input type="checkbox" id="consentVoluntary"> <strong>Freiwillige Teilnahme:</strong> Ich nehme freiwillig teil und kann jederzeit abbrechen.</label>
+              <label class="check-row"><input type="checkbox" id="consentNoTherapy"> <strong>Kein Beratungsersatz:</strong> Das Tool ersetzt keine Berufsberatung oder Therapie.</label>
+              <label class="check-row" id="consentAudioRow"><input type="checkbox" id="consentAudio"> <strong>Audio-Transkription:</strong> Ich stimme der Mikrofonaufzeichnung zur Transkription zu (Audio wird nicht dauerhaft gespeichert).</label>
+              <label class="check-row"><input type="checkbox" id="consentAi"> <strong>KI-Verarbeitung:</strong> Ich stimme der KI-gestuetzten Sortierung zu (keine automatisierte Einzelfallentscheidung).</label>
+              <label class="check-row"><input type="checkbox" id="privacyCheck"> Ich akzeptiere die Datenschutzrichtlinie.</label>
+              <label class="check-row"><input type="checkbox" id="ethicCheck"> Ich akzeptiere den Ethikkodex.</label>
+            </div>
+            <p class="small-note" id="ageConsentHint">Einwilligungstexte werden altersbezogen vereinfacht angezeigt.</p>
+            <p class="small-note">Verantwortliche Stelle: [Bitte Organisation ergaenzen] | Kontakt: [Bitte E-Mail ergaenzen] | Datenstandort: lokal / Schweiz-EU-konforme Infrastruktur.</p>
+            <div class="field" style="margin-top:10px">
+              <label for="signatureInput">Unterschrift (Name ausgeschrieben)</label>
+              <input id="signatureInput" autocomplete="name">
+            </div>
+          </section>
+
+          <section class="band" id="sampleBand">
+            <h2>3) Stimmprobe (nur bei Modus "mit Coach")</h2>
+            <p class="small-note">Die App nimmt je eine kurze Probe auf, damit spaetere Notizen besser zwischen Kunde und Coach getrennt werden koennen.</p>
+            <div class="grid">
+              <div class="band">
+                <h3>Stimmprobe Kunde</h3>
+                <div class="btn-row">
+                  <button class="btn secondary" id="sampleClientBtn" type="button">Start / Stop</button>
+                </div>
+                <p class="state-line" id="sampleClientState">Noch keine Probe.</p>
+              </div>
+              <div class="band">
+                <h3>Stimmprobe Coach</h3>
+                <div class="btn-row">
+                  <button class="btn secondary" id="sampleCoachBtn" type="button">Start / Stop</button>
+                </div>
+                <p class="state-line" id="sampleCoachState">Noch keine Probe.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="band">
+            <div class="btn-row">
+              <button class="btn primary" id="startSessionBtn" type="button">Coaching starten</button>
+            </div>
+            <p class="error" id="introError"></p>
+          </section>
+        </div>
+
+        <aside class="grid">
+          <section class="band">
+            <h3>Ablauf</h3>
+            <div class="status-list" id="introFlowList"></div>
+          </section>
+          <section class="band">
+            <h3>Hinweis</h3>
+            <p class="small-note">Mikrofon laeuft immer pro Frageblock. Nach Stop extrahiert die KI zuerst Begriffe zur Hauptfrage, dann zu den Zusatzfragen. Bei Vertiefungen zeigt die App erledigte Uebungen mit Haken.</p>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen" id="sessionScreen">
+      <div class="grid split">
+        <div class="grid">
+          <section class="band">
+            <p class="small-note" id="questionContextLabel">Hauptfrage</p>
+            <h2 class="question-title" id="mainQuestionTitle"></h2>
+            <p class="small-note" id="mainQuestionSubline"></p>
+            <ul class="follow-list" id="followupList"></ul>
+          </section>
+
+          <section class="band">
+            <h3>Gespraech / Text</h3>
+            <div class="speaker-wrap" id="speakerButtons"></div>
+            <div class="btn-row">
+              <button class="btn primary" id="micStartBtn" type="button">Mikrofon starten</button>
+              <button class="btn warn" id="micStopBtn" type="button">Mikrofon stoppen</button>
+              <button class="btn secondary" id="extractBtn" type="button">KI: Begriffe extrahieren</button>
+            </div>
+            <p class="state-line" id="micState">Mikrofon aus.</p>
+            <div class="field">
+              <label for="transcriptInput">Transkript (live + editierbar)</label>
+              <textarea id="transcriptInput"></textarea>
+            </div>
+            <div class="field">
+              <label for="noteInput">Freitext / Beobachtungen</label>
+              <textarea id="noteInput"></textarea>
+            </div>
+            <p class="state-line" id="extractState"></p>
+            <div class="chip-wrap" id="extractedChips"></div>
+          </section>
+
+          <section class="band">
+            <h3>Vertiefung</h3>
+            <p class="small-note">Immer zuerst Hauptfrage, danach optional Vertiefungen.</p>
+            <div class="btn-row">
+              <button class="btn good" id="deepenYesBtn" type="button">Ja, Vertiefung</button>
+              <button class="btn secondary" id="deepenNoBtn" type="button">Nein, weiter zur naechsten Hauptfrage</button>
+            </div>
+            <p class="state-line" id="deepenState"></p>
+            <div class="chip-wrap" id="moduleChips"></div>
+            <div class="module-work hidden" id="moduleWorkspace"></div>
+          </section>
+
+          <section class="band">
+            <div class="btn-row">
+              <button class="btn secondary" id="completeContextBtn" type="button">Block als erledigt markieren</button>
+              <button class="btn primary" id="nextPhaseBtn" type="button">Naechste Hauptfrage</button>
+            </div>
+            <p class="state-line" id="sessionState"></p>
+          </section>
+        </div>
+
+        <aside class="grid">
+          <section class="band">
+            <h3>STAR Fortschritt</h3>
+            <div class="phase-list" id="phaseList"></div>
+          </section>
+          <section class="band">
+            <h3>Aktueller Stand</h3>
+            <div class="status-list" id="phaseStatus"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section class="screen" id="summaryScreen">
+      <div class="grid split">
+        <div class="grid">
+          <section class="band">
+            <h2>Klarstarter Satz</h2>
+            <p class="small-note">Der Satz verdichtet Staerken, Interessen, Beitrag und Bedingungen.</p>
+            <p class="small-note">Mehrere Varianten mit Ueberschneidungen werden vorgeschlagen. Eine Variante kann direkt uebernommen werden.</p>
+            <p class="small-note" id="analysisSourceLine">Analysequelle: lokal</p>
+            <div class="summary-grid" style="margin-bottom:10px">
+              <div class="summary-row">
+                <strong>Lueckenanalyse</strong><br>
+                <span id="gapAnalysisText">-</span>
+              </div>
+              <div class="summary-row">
+                <strong>Empfohlene Vertiefungsfrage</strong><br>
+                <span id="recommendedQuestionText">-</span>
+              </div>
+              <div class="summary-row">
+                <strong>Risikoanalyse (Zweifach-Ueberlappung)</strong><br>
+                <span id="riskAnalysisText">-</span>
+              </div>
+            </div>
+            <div class="summary-grid" id="sentenceOptions"></div>
+            <div class="field">
+              <label for="sentenceOutput">Merksatz</label>
+              <textarea id="sentenceOutput" style="min-height:140px"></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn secondary" id="regenerateSentenceBtn" type="button">Neu formulieren</button>
+              <button class="btn good" id="approveSentenceBtn" type="button">Passt</button>
+              <button class="btn primary" id="pdfBtn" type="button">PDF erstellen</button>
+            </div>
+            <p class="ok" id="summaryState"></p>
+          </section>
+
+          <section class="band">
+            <h3>Abschluss</h3>
+            <p class="small-note">Nach dem PDF werden alle Angaben aus der App entfernt.</p>
+            <div class="btn-row">
+              <button class="btn warn" id="resetBtn" type="button">Alles loeschen und neu starten</button>
+            </div>
+          </section>
+        </div>
+
+        <aside class="grid">
+          <section class="band">
+            <h3>Ergebnisse pro Buchstabe</h3>
+            <div class="summary-grid" id="summaryRows"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const LANGUAGES = [
+      { id: "de-CH", label: "Schweizerdeutsch" },
+      { id: "de-DE", label: "Hochdeutsch" }
+    ];
+
+    const DIALECT_MAP = {
+      "gsi": "gewesen",
+      "gmacht": "gemacht",
+      "gseh": "gesehen",
+      "gschafft": "gearbeitet",
+      "schaffe": "arbeiten",
+      "bruche": "brauchen",
+      "bruuch": "brauch",
+      "zfride": "zufrieden",
+      "haeng": "haenge",
+      "chli": "klein",
+      "nid": "nicht",
+      "nume": "nur",
+      "gaht": "geht",
+      "wemer": "wenn wir",
+      "wotsch": "willst du",
+      "immerno": "immer noch",
+      "wuerklich": "wirklich"
+    };
+
+    const STOPWORDS = new Set([
+      "der", "die", "das", "und", "oder", "aber", "doch", "weil", "wenn", "dann", "auch",
+      "ich", "du", "er", "sie", "wir", "ihr", "man", "es", "mich", "dich", "euch", "uns",
+      "ein", "eine", "einer", "einem", "einen", "mit", "ohne", "fuer", "dass", "damit",
+      "auf", "im", "in", "am", "an", "bei", "von", "zu", "zum", "zur", "ist", "sind", "war",
+      "waren", "wird", "werden", "habe", "hast", "hat", "haben", "als", "wie", "sehr",
+      "schon", "noch", "mal", "mehr", "weniger", "hier", "dort", "diese", "dieser", "dieses",
+      "mein", "dein", "sein", "ihr", "euer", "nicht", "ja", "nein", "halt", "etwas", "alles"
+    ]);
+
+    const STRENGTH_WORDS = [
+      "zuhoeren", "ermutigen", "verbinden", "erklaeren", "begleiten", "strukturieren", "organisieren",
+      "analysieren", "recherchieren", "verstehen", "fragen", "moderieren", "schreiben", "praesentieren",
+      "anpacken", "bauen", "reparieren", "sortieren", "pflegen", "kochen", "gestalten", "zeichnen",
+      "musizieren", "improvisieren", "entwerfen", "durchhalten", "verantwortung", "geduld", "mut",
+      "humor", "zuverlaessigkeit", "offenheit", "sorgfalt", "ruhe"
+    ];
+
+    const THEME_GROUPS = {
+      "Menschen": ["kinder", "jugendliche", "familien", "senioren", "teams", "gaeste", "lernende"],
+      "Natur und Tiere": ["wald", "tiere", "pflanzen", "garten", "berge", "see", "umwelt"],
+      "Technik": ["computer", "apps", "maschinen", "fahrzeuge", "elektronik", "internet", "programmieren"],
+      "Kreativitaet": ["musik", "theater", "design", "fotografie", "video", "raeume", "kunst"],
+      "Gesundheit": ["sport", "bewegung", "pflege", "ernaehrung", "entspannung", "koerper", "sicherheit"],
+      "Ordnung und Zahlen": ["zahlen", "listen", "plaene", "verwaltung", "ablaeufe", "logistik", "organisation"],
+      "Gesellschaft und Sinn": ["gerechtigkeit", "hilfe", "bildung", "kirche", "frieden", "beratung", "zukunft"]
+    };
+
+    const NEED_GROUPS = {
+      "Sicherheit": ["stabilitaet", "lohn", "planbarkeit", "struktur", "klarheit", "verlaesslichkeit", "ordnung"],
+      "Freiheit": ["selbststaendigkeit", "spielraum", "flexibilitaet", "kreativitaet", "ausprobieren", "beweglichkeit", "unabhaengigkeit"],
+      "Beziehung": ["team", "vertrauen", "wertschaetzung", "zugehoerigkeit", "unterstuetzung", "gemeinschaft", "kontakt"],
+      "Sinn": ["beitrag", "wirkung", "hilfe", "bedeutung", "werte", "gerechtigkeit", "stimmigkeit"],
+      "Energie": ["ruhe", "pausen", "bewegung", "natur", "freude", "kraft", "erholung"],
+      "Lernen": ["entwicklung", "foerderung", "wissen", "feedback", "fortschritt", "kompetenz", "wachstum"],
+      "Anerkennung und Identitaet": ["gesehen werden", "stolz", "wuerde", "echtheit", "zutrauen", "resonanz", "selbstvertrauen"]
+    };
+
+    const CONTRIBUTION_GROUPS = {
+      "Menschen staerken": ["ermutigen", "begleiten", "troesten", "zuhoeren", "orientieren", "beraten", "entlasten"],
+      "Klarheit schaffen": ["ordnen", "erklaeren", "strukturieren", "vereinfachen", "dokumentieren", "recherchieren", "klaeren"],
+      "Schoenheit ermoeglichen": ["gestalten", "verschoenern", "einrichten", "inszenieren", "zeichnen", "arrangieren", "veredeln"],
+      "Leben schuetzen": ["heilen", "pflegen", "versorgen", "beruhigen", "stabilisieren", "staerken", "bewegen"],
+      "Dinge zum Funktionieren bringen": ["reparieren", "bauen", "programmieren", "verbessern", "optimieren", "organisieren", "absichern"],
+      "Natur und Tiere achten": ["schuetzen", "pflegen", "beobachten", "anbauen", "ernten", "bewahren", "begleiten"],
+      "Zukunft ermoeglichen": ["bilden", "trainieren", "entwickeln", "coachen", "vernetzen", "forschen", "aufbauen"]
+    };
+
+    const ROLE_WORDS = [
+      "zuhoerer", "begleiter", "troester", "mutmacher", "brueckenbauer",
+      "organisator", "planer", "strukturgeber", "koordinator", "vorbereiter",
+      "erklaerer", "moderator", "vermittler", "fragensteller", "orientierungsgeber",
+      "macher", "praktiker", "dranbleiber", "problemloeser", "umsetzer",
+      "ideengeber", "gestalter", "stimmungsmacher", "raumgestalter", "erfinder",
+      "beobachter", "pruefer", "analytiker", "zahlenmensch", "qualitaetshueter",
+      "ruhebringer", "beschuetzer", "stabilisator", "verlaesslicher", "rueckenstaerker"
+    ];
+
+    const ROLE_TO_STRENGTH = {
+      "zuhoerer": ["zuhoeren", "geduld", "vertrauen"],
+      "begleiter": ["begleiten", "ermutigen", "zuverlaessigkeit"],
+      "organisator": ["organisieren", "strukturieren", "verantwortung"],
+      "planer": ["planen", "analysieren", "sorgfalt"],
+      "erklaerer": ["erklaeren", "moderieren", "fragen"],
+      "macher": ["anpacken", "umsetzen", "durchhalten"],
+      "gestalter": ["gestalten", "ideen", "entwerfen"],
+      "beobachter": ["beobachten", "analysieren", "genauigkeit"],
+      "ruhebringer": ["ruhe", "troesten", "stabilisieren"],
+      "brueckenbauer": ["verbinden", "vermitteln", "zuhoeren"]
+    };
+
+    const TARGET_GROUPS = [
+      "kinder", "jugendliche", "familien", "aeltere menschen", "teams", "kunden",
+      "menschen in stress", "menschen ohne orientierung", "tiere", "natur", "betriebe"
+    ];
+
+    const PROFESSION_IDEAS = [
+      "kaufmann", "sozialpaedagoge", "hotelfachfrau", "informatiker", "pflegefachperson",
+      "religionspaedagoge", "gastrofachperson", "fachperson betreuung", "landschaftsgaertner",
+      "projektleiter", "lehrer", "berufsberater"
+    ];
+
+    const BODY_CHECK_WORDS = [
+      "viel menschenkontakt", "draussen sein", "am computer arbeiten", "selbststaendig arbeiten",
+      "klare anleitung", "verantwortung tragen", "abwechslung", "genaue kontrolle",
+      "tempo", "ruhe", "teamarbeit", "alleine arbeiten"
+    ];
+
+    const WIRKUNGSWORTE = ["leichter", "schoener", "klarer", "sicherer", "menschlicher"];
+
+    const STEM_SUFFIXES = [
+      "lichkeiten", "lichkeit", "keiten", "heiten", "ungen",
+      "igkeit", "ischer", "isches", "ischen", "igkeit",
+      "innen", "ende", "ender", "endes", "ung", "lich",
+      "keit", "heit", "isch", "ern", "ern", "est", "en",
+      "er", "em", "es", "e", "n", "s"
+    ];
+
+    const SEMANTIC_CONCEPTS = [
+      { phases: ["S"], signals: ["dranbleiben", "ausdauer", "biss", "nicht aufgeben", "weiterziehen"], outputs: ["durchhalten", "geduld"] },
+      { phases: ["S"], signals: ["ins kalte wasser", "wagen", "risiko", "mutig", "ueberwinden"], outputs: ["mut", "verantwortung"] },
+      { phases: ["S"], signals: ["zwischen den zeilen", "gut zuhoeren", "fein fuehlen", "einfuehlen"], outputs: ["zuhoeren", "begleiten"] },
+      { phases: ["S"], signals: ["alles unter einen hut", "koordiniert", "ueberblick", "ordentlich"], outputs: ["organisieren", "strukturieren"] },
+      { phases: ["S"], signals: ["ruhig bleiben", "kuehlen kopf", "deeskalieren", "ausgleich"], outputs: ["ruhe", "zuverlaessigkeit"] },
+
+      { phases: ["T"], signals: ["mit menschen", "zusammenarbeit", "begleiten", "austausch"], outputs: ["menschen", "beratung"] },
+      { phases: ["T"], signals: ["natur", "wald", "draussen", "tiere"], outputs: ["natur", "tiere"] },
+      { phases: ["T"], signals: ["technik", "digital", "apps", "programm"], outputs: ["technik", "programmieren"] },
+      { phases: ["T"], signals: ["kreativ", "gestalten", "musik", "ideen"], outputs: ["kreativitaet", "gestaltung"] },
+      { phases: ["T"], signals: ["gesundheit", "koerper", "bewegung", "ernaehrung"], outputs: ["gesundheit", "bewegung"] },
+
+      { phases: ["A"], signals: ["stabil", "sicher", "planbar", "klarer rahmen"], outputs: ["sicherheit", "planbarkeit"] },
+      { phases: ["A"], signals: ["frei", "selbst entscheiden", "spielraum", "unabhaengig"], outputs: ["freiheit", "selbststaendigkeit"] },
+      { phases: ["A"], signals: ["team", "zugehoeren", "wertschaetzung", "vertrauen"], outputs: ["beziehung", "zugehoerigkeit"] },
+      { phases: ["A"], signals: ["sinnvoll", "beitrag", "bedeutsam", "wirksam"], outputs: ["sinn", "wirkung"] },
+      { phases: ["A"], signals: ["ruhe", "pausen", "energie", "ausgleich"], outputs: ["energie", "erholung"] },
+
+      { phases: ["R"], signals: ["menschen staerken", "ermutigen", "entlasten", "helfen"], outputs: ["staerken", "entlasten"] },
+      { phases: ["R"], signals: ["klarheit", "ordnen", "vereinfachen", "verstaendlich"], outputs: ["klaeren", "strukturieren"] },
+      { phases: ["R"], signals: ["heilen", "schuetzen", "versorgen", "stabilisieren"], outputs: ["schuetzen", "versorgen"] },
+      { phases: ["R"], signals: ["verbessern", "optimieren", "funktionieren", "reparieren"], outputs: ["verbessern", "funktionieren"] },
+      { phases: ["R"], signals: ["entwickeln", "bilden", "vernetzen", "zukunft"], outputs: ["entwickeln", "zukunft"] }
+    ];
+
+    const PROVERB_CUES = [
+      { phrases: ["steter tropfen hoehlt den stein", "ohne fleiss kein preis"], phases: ["S"], outputs: ["durchhalten", "geduld"] },
+      { phrases: ["wer nicht wagt der nicht gewinnt"], phases: ["S"], outputs: ["mut", "wagen"] },
+      { phrases: ["uebung macht den meister"], phases: ["S", "A"], outputs: ["lernen", "entwicklung"] },
+      { phrases: ["der ton macht die musik"], phases: ["S", "R"], outputs: ["kommunikation", "respekt"] },
+      { phrases: ["viele koeche verderben den brei"], phases: ["S", "R"], outputs: ["koordination", "klarheit"] },
+      { phrases: ["am gleichen strang ziehen"], phases: ["S", "A", "R"], outputs: ["team", "zusammenarbeit"] },
+      { phrases: ["den kopf in den sand stecken"], phases: ["A"], outputs: ["sicherheit", "klaerung"] },
+      { phrases: ["ueber den tellerrand schauen"], phases: ["T", "R"], outputs: ["offenheit", "entwicklung"] },
+      { phrases: ["den nagel auf den kopf treffen"], phases: ["R"], outputs: ["klarheit", "praezision"] },
+      { phrases: ["auf eigenen beinen stehen"], phases: ["A"], outputs: ["selbststaendigkeit", "sicherheit"] },
+      { phrases: ["mit herzblut"], phases: ["T", "R"], outputs: ["sinn", "engagement"] }
+    ];
+
+    const NEED_TAG_DEFINITIONS = {
+      "sicherheit": "Der Teilnehmer benoetigt Verlaesslichkeit, Stabilitaet und strukturelle Vorhersehbarkeit.",
+      "freiheit": "Unverzichtbares Beduerfnis nach Gestaltungsspielraum, Flexibilitaet und Autonomie.",
+      "anerkennung": "Wunsch, im beruflichen Kontext explizit gesehen, geschaetzt und respektiert zu werden.",
+      "sinn": "Notwendigkeit, den Wert und Zweck des eigenen Tuns zu verstehen.",
+      "zugehoerigkeit": "Wunsch nach Einbindung in ein stabiles, vertrauensvolles Team.",
+      "ruhe": "Bedarf nach einem Rahmen ohne permanenten, unkontrollierten Leistungsdruck.",
+      "entwicklung": "Wunsch nach kontinuierlichem Wachstum und Erwerb neuer Kompetenzen.",
+      "wirkung": "Drang, sichtbare Veraenderungen durch eigenes Handeln zu erleben.",
+      "schoenheit": "Stellenwert von Aesthetik, Atmosphaere und gestalterischer Qualitaet.",
+      "klarheit": "Wunsch nach Ordnung, nachvollziehbaren Strukturen und logischem Verstehen.",
+      "freude": "Fokus auf Leichtigkeit, Humor und lebendige Interaktionen.",
+      "gerechtigkeit": "Ethisches Beduerfnis nach Fairness, Gleichbehandlung und transparenter Moral.",
+      "selbstwirksamkeit": "Beduerfnis zu spueren: Mein Beitrag macht einen realen Unterschied.",
+      "dankbarkeit": "Wunsch, dass emotionaler oder praktischer Einsatz positiv ankommt.",
+      "einkommen": "Erfordernis einer soliden und verlaesslichen finanziellen Tragfaehigkeit."
+    };
+
+    const THERAPEUTIC_RED_ALERT_TERMS = [
+      "suizid", "selbstmord", "ich will nicht mehr leben", "mich umbringen",
+      "ritzen", "selbstverletzung", "panikattacke", "trauma", "missbrauch",
+      "ich halte das nicht mehr aus", "fremdgefaehrdung"
+    ];
+
+    const AI_DEFAULT_MODELS = {
+      openai: "gpt-5.2",
+      gemini: "gemini-2.0-flash"
+    };
+
+    function flattenValues(objectMap) {
+      return Object.keys(objectMap).reduce((acc, key) => acc.concat(objectMap[key]), []);
+    }
+
+    function gatherByKeys(keys, mapObj) {
+      return keys.reduce((acc, key) => acc.concat(mapObj[key] || []), []);
+    }
+
+    function createSessionId() {
+      if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      const rand = Math.random().toString(16).slice(2, 10);
+      return `session-${Date.now()}-${rand}`;
+    }
+
+    function isUnder13() {
+      return state.ageCategory === "under_13";
+    }
+
+    function audioAllowedByAge() {
+      return !isUnder13();
+    }
+
+    function requiredAudioConsent() {
+      return audioAllowedByAge();
+    }
+
+    const PHASES = [
+      {
+        id: "S",
+        label: "Staerken sehen",
+        mainQuestion: "Was bringst du mit?",
+        followUps: [
+          "Was kannst du gut, auch wenn es fuer dich normal ist?",
+          "Wobei kommen andere zu dir?",
+          "Was faellt dir leichter als vielen anderen?",
+          "Was wuerde eine Person, die dich gut kennt, sagen?"
+        ],
+        modules: [
+          { id: "S-M1", title: "Staerken-Woerterwahl", type: "pick_list", pool: STRENGTH_WORDS },
+          { id: "S-M2", title: "Fremdblick", type: "narrative", prompt: "Was wuerde eine wohlwollende Person ueber dich sagen?" },
+          { id: "S-M3", title: "Stolz-Moment", type: "narrative", prompt: "Worauf bist du stolz und was hat es dafuer gebraucht?" },
+          { id: "S-M4", title: "Rollenkarte", type: "role_strength" }
+        ]
+      },
+      {
+        id: "T",
+        label: "Themen und Lebendigkeit",
+        mainQuestion: "Wofuer interessierst du dich? Was macht dich lebendig?",
+        followUps: [
+          "Bei welchen Themen bleibst du haengen?",
+          "Worueber koenntest du laenger reden?",
+          "Wann vergeht die Zeit schnell?",
+          "Welche Traeume ziehen dich an?"
+        ],
+        modules: [
+          { id: "T-M1", title: "Themen-Woerterwahl", type: "theme_tree" },
+          { id: "T-M2", title: "Resonanz-Check", type: "resonance", pool: Object.keys(THEME_GROUPS) },
+          { id: "T-M3", title: "Perfekter Tag", type: "narrative", prompt: "Erzaehle von einem perfekten Tag in der Zukunft." },
+          { id: "T-M4", title: "Haengenbleiben-Spur", type: "narrative", prompt: "Bei welchen Themen bleibst du haengen?" }
+        ]
+      },
+      {
+        id: "A",
+        label: "Anliegen und Beduerfnisse",
+        mainQuestion: "Was brauchst du, damit es dir gut geht?",
+        followUps: [
+          "Was gibt dir Energie?",
+          "Was nimmt dir schnell Energie?",
+          "Was darf auf keinen Fall fehlen?",
+          "Was muss stimmen, damit es traegt?"
+        ],
+        modules: [
+          { id: "A-M1", title: "Beduerfnis-Woerterwahl", type: "need_tree" },
+          { id: "A-M2", title: "Beduerfnis-Resonanz", type: "resonance", pool: Object.keys(NEED_GROUPS) },
+          { id: "A-M3", title: "Frei oder klemmt", type: "free_klemmt", pool: BODY_CHECK_WORDS },
+          { id: "A-M4", title: "Sogar-wenn-Check", type: "career_sentence" }
+        ]
+      },
+      {
+        id: "R",
+        label: "Richtung und Beitrag",
+        mainQuestion: "Wofuer moechte ich wirksam werden?",
+        followUps: [
+          "Wenn du gut gearbeitet hast: Was ist danach besser?",
+          "Wem soll dein Tun nuetzen?",
+          "Was soll durch dich leichter, schoener, klarer, sicherer oder menschlicher werden?"
+        ],
+        modules: [
+          { id: "R-M1", title: "Beitrags-Woerterwahl", type: "pick_list", pool: flattenValues(CONTRIBUTION_GROUPS) },
+          { id: "R-M2", title: "Danach ist es besser", type: "narrative", prompt: "Was ist nach deiner Arbeit besser als vorher?" },
+          { id: "R-M3", title: "Zielgruppen-Karte", type: "target_swipe", pool: TARGET_GROUPS },
+          { id: "R-M4", title: "Beitragsspur", type: "impact_phrase", pool: WIRKUNGSWORTE }
+        ]
+      }
+    ];
+
+    function createPhaseStore() {
+      const map = {};
+      PHASES.forEach((phase) => {
+        const modules = {};
+        phase.modules.forEach((mod) => {
+          modules[mod.id] = {
+            done: false,
+            transcript: "",
+            notes: "",
+            keywords: [],
+            selected: [],
+            stage: "start",
+            cursor: 0,
+            customText: "",
+            choiceMap: {},
+            tags: [],
+            impactWord: ""
+          };
+        });
+        map[phase.id] = {
+          mainDone: false,
+          transcript: "",
+          notes: "",
+          keywords: [],
+          deepenAsked: false,
+          modules
+        };
+      });
+      return map;
+    }
+
+    const state = {
+      view: "intro",
+      sessionId: "",
+      mode: "coach",
+      language: "de-CH",
+      ageCategory: "16_17",
+      flowVariant: "quick",
+      aiProvider: "openai",
+      aiModel: AI_DEFAULT_MODELS.openai,
+      names: { client: "", coach: "" },
+      signature: "",
+      consent: {
+        privacy: false,
+        ethic: false,
+        voluntary: false,
+        noTherapy: false,
+        audio: false,
+        ai: false
+      },
+      samples: {
+        client: { ready: false, transcript: "", blob: null },
+        coach: { ready: false, transcript: "", blob: null }
+      },
+      activePhaseIndex: 0,
+      activeModuleId: null,
+      activeSpeaker: "kunde",
+      micRunning: false,
+      sampleRecordingKind: null,
+      micStatus: "Mikrofon aus.",
+      phases: createPhaseStore(),
+      sentenceApproved: false,
+      sentence: "",
+      sentenceOptions: [],
+      selectedSentenceOption: 0,
+      lueckenAnalyse: "",
+      risikoAnalyse: "",
+      empfehlteVertiefungsfrage: "",
+      lastAnalysisSource: "lokal",
+      redAlert: false
+    };
+
+    const micRuntime = {
+      stream: null,
+      recorder: null,
+      recognition: null,
+      chunks: [],
+      target: null,
+      interim: ""
+    };
+
+    const screens = {
+      intro: document.getElementById("introScreen"),
+      session: document.getElementById("sessionScreen"),
+      summary: document.getElementById("summaryScreen")
+    };
+
+    function normalizeText(input) {
+      let text = (input || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/ß/g, "ss");
+      Object.entries(DIALECT_MAP).forEach(([dialect, normal]) => {
+        const rx = new RegExp(`\\b${dialect.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+        text = text.replace(rx, normal);
+      });
+      return text;
+    }
+
+    function tokenize(input) {
+      return normalizeText(input)
+        .split(/[^a-z0-9]+/g)
+        .map((token) => token.trim())
+        .filter((token) => token.length > 2 && !STOPWORDS.has(token));
+    }
+
+    function normalizePhrase(input) {
+      return normalizeText(input)
+        .replace(/[^a-z0-9\s]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function stemToken(token) {
+      if (!token) return "";
+      let stem = token;
+      for (const suffix of STEM_SUFFIXES) {
+        if (stem.length > suffix.length + 2 && stem.endsWith(suffix)) {
+          stem = stem.slice(0, -suffix.length);
+          break;
+        }
+      }
+      return stem;
+    }
+
+    function collectStems(tokens) {
+      const set = new Set();
+      tokens.forEach((token) => {
+        set.add(stemToken(token));
+      });
+      return set;
+    }
+
+    function inferSemanticKeywords(rawText, phaseId = "") {
+      const normalized = normalizePhrase(rawText);
+      const tokens = tokenize(rawText);
+      const stems = collectStems(tokens);
+      const semantic = [];
+
+      SEMANTIC_CONCEPTS.forEach((concept) => {
+        if (phaseId && !concept.phases.includes(phaseId)) return;
+        const hit = concept.signals.some((signal) => {
+          const normalizedSignal = normalizePhrase(signal);
+          if (!normalizedSignal) return false;
+          if (normalized.includes(normalizedSignal)) return true;
+          const signalTokens = normalizedSignal.split(" ").filter(Boolean);
+          if (signalTokens.length === 1) {
+            const signalStem = stemToken(signalTokens[0]);
+            return stems.has(signalStem);
+          }
+          const hits = signalTokens.reduce((sum, token) => {
+            const tokenStem = stemToken(token);
+            return sum + (stems.has(tokenStem) ? 1 : 0);
+          }, 0);
+          return hits >= Math.max(1, Math.floor(signalTokens.length * 0.7));
+        });
+        if (hit) {
+          concept.outputs.forEach((output) => semantic.push(output));
+        }
+      });
+
+      PROVERB_CUES.forEach((entry) => {
+        if (phaseId && !entry.phases.includes(phaseId)) return;
+        const matched = entry.phrases.some((phrase) => {
+          const normalizedPhrase = normalizePhrase(phrase);
+          return normalizedPhrase && normalized.includes(normalizedPhrase);
+        });
+        if (matched) {
+          entry.outputs.forEach((output) => semantic.push(output));
+        }
+      });
+
+      return semantic.filter((term, index, arr) => arr.findIndex((item) => normalizeText(item) === normalizeText(term)) === index);
+    }
+
+    function extractKeywords(rawText, lexicon = [], options = {}) {
+      const phaseId = options.phaseId || "";
+      const tokens = tokenize(rawText);
+      const tokenStems = collectStems(tokens);
+      const normalizedRaw = normalizePhrase(rawText);
+      const tokenCount = {};
+      tokens.forEach((token) => {
+        tokenCount[token] = (tokenCount[token] || 0) + 1;
+      });
+
+      const scoredLexicon = [];
+      lexicon.forEach((term) => {
+        const key = normalizePhrase(term);
+        if (!key) return;
+        const keyTokens = key.split(" ").filter(Boolean);
+        const keyStems = keyTokens.map((item) => stemToken(item));
+        let score = 0;
+
+        if (keyTokens.length > 1 && normalizedRaw.includes(key)) {
+          score += keyTokens.length + 3;
+        }
+
+        Object.entries(tokenCount).forEach(([token, count]) => {
+          const tokenStem = stemToken(token);
+          if (key.includes(token) || token.includes(key)) score += count + 1;
+          if (keyStems.includes(tokenStem)) score += count;
+        });
+
+        const stemHits = keyStems.reduce((sum, stem) => sum + (tokenStems.has(stem) ? 1 : 0), 0);
+        if (keyStems.length > 1 && stemHits >= Math.max(1, Math.floor(keyStems.length * 0.7))) {
+          score += stemHits + 1;
+        }
+
+        if (score > 0) scoredLexicon.push({ term, score });
+      });
+
+      const freeWords = Object.entries(tokenCount)
+        .sort((a, b) => b[1] - a[1])
+        .map(([token]) => token)
+        .slice(0, 12);
+
+      const rankedLexicon = scoredLexicon
+        .sort((a, b) => b.score - a.score || a.term.localeCompare(b.term))
+        .map((entry) => entry.term);
+
+      const semanticTerms = inferSemanticKeywords(rawText, phaseId);
+
+      const merged = [...rankedLexicon, ...semanticTerms, ...freeWords]
+        .filter((term, index, arr) => arr.findIndex((item) => normalizeText(item) === normalizeText(term)) === index)
+        .slice(0, 10);
+
+      return merged;
+    }
+
+    function detectTherapeuticRedAlert(rawText) {
+      const normalized = normalizePhrase(rawText);
+      return THERAPEUTIC_RED_ALERT_TERMS.some((term) => {
+        const needle = normalizePhrase(term);
+        return needle && normalized.includes(needle);
+      });
+    }
+
+    function flattenPhaseLexicon(phase) {
+      if (phase.id === "S") return STRENGTH_WORDS;
+      if (phase.id === "T") return flattenValues(THEME_GROUPS);
+      if (phase.id === "A") return flattenValues(NEED_GROUPS);
+      return flattenValues(CONTRIBUTION_GROUPS);
+    }
+
+    function currentPhase() {
+      return PHASES[state.activePhaseIndex];
+    }
+
+    function currentPhaseStore() {
+      return state.phases[currentPhase().id];
+    }
+
+    function activeContextStore() {
+      const phaseStore = currentPhaseStore();
+      if (!state.activeModuleId) {
+        return {
+          type: "main",
+          title: currentPhase().mainQuestion,
+          transcriptKey: "transcript",
+          notesKey: "notes",
+          keywordsKey: "keywords",
+          target: phaseStore
+        };
+      }
+      const moduleDef = currentPhase().modules.find((mod) => mod.id === state.activeModuleId);
+      const moduleStore = phaseStore.modules[state.activeModuleId];
+      return {
+        type: "module",
+        def: moduleDef,
+        title: moduleDef.title,
+        transcriptKey: "transcript",
+        notesKey: "notes",
+        keywordsKey: "keywords",
+        target: moduleStore
+      };
+    }
+
+    function setView(view) {
+      Object.entries(screens).forEach(([key, node]) => {
+        node.classList.toggle("active", key === view);
+      });
+      state.view = view;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function moduleCompletion(phaseStore) {
+      const entries = Object.values(phaseStore.modules);
+      if (entries.length === 0) return { done: 0, total: 0 };
+      return { done: entries.filter((m) => m.done).length, total: entries.length };
+    }
+
+    function finishedPhaseCount() {
+      return PHASES.reduce((sum, phase) => {
+        const store = state.phases[phase.id];
+        const mods = moduleCompletion(store);
+        if (!store.mainDone) return sum;
+        if (mods.done === 0) return sum + 0.7;
+        return sum + 1;
+      }, 0);
+    }
+
+    function updateProgress() {
+      let label = "Start";
+      let percent = 0;
+
+      if (state.view === "intro") {
+        label = "Start";
+        percent = 0;
+      } else if (state.view === "session") {
+        label = `Phase ${state.activePhaseIndex + 1} von ${PHASES.length}`;
+        const base = finishedPhaseCount() / PHASES.length;
+        percent = Math.round(Math.min(96, Math.max(5, base * 100)));
+      } else {
+        label = "Abschluss";
+        percent = 100;
+      }
+
+      document.getElementById("progressLabel").textContent = label;
+      document.getElementById("progressPercent").textContent = `${percent}%`;
+      document.getElementById("progressFill").style.width = `${percent}%`;
+    }
+
+    function renderLanguageButtons() {
+      const wrap = document.getElementById("languageButtons");
+      wrap.innerHTML = "";
+      LANGUAGES.forEach((lang) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `btn ${state.language === lang.id ? "primary" : "secondary"}`;
+        btn.textContent = lang.label;
+        btn.addEventListener("click", () => {
+          state.language = lang.id;
+          render();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderModeButtons() {
+      const wrap = document.getElementById("modeButtons");
+      wrap.innerHTML = "";
+      [
+        { id: "solo", label: "App alleine nutzen" },
+        { id: "coach", label: "Mit Coach nutzen" }
+      ].forEach((mode) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `btn ${state.mode === mode.id ? "primary" : "secondary"}`;
+        btn.textContent = mode.label;
+        btn.addEventListener("click", () => {
+          state.mode = mode.id;
+          render();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderIntroFlowList() {
+      const list = document.getElementById("introFlowList");
+      list.innerHTML = "";
+      ["S - Staerken", "T - Themen", "A - Anliegen", "R - Richtung", "Klarstarter Satz + PDF"].forEach((text) => {
+        const row = document.createElement("div");
+        row.className = "summary-row";
+        row.textContent = text;
+        list.appendChild(row);
+      });
+    }
+
+    function readIntroForm() {
+      state.ageCategory = document.getElementById("ageCategorySelect").value;
+      state.flowVariant = document.getElementById("flowVariantSelect").value;
+      state.aiProvider = document.getElementById("aiProviderSelect").value;
+      {
+        const modelInput = document.getElementById("aiModelInput").value.trim();
+        state.aiModel = modelInput || AI_DEFAULT_MODELS[state.aiProvider];
+      }
+      state.names.client = document.getElementById("clientNameInput").value.trim();
+      state.names.coach = document.getElementById("coachNameInput").value.trim();
+      state.signature = document.getElementById("signatureInput").value.trim();
+      state.consent.privacy = document.getElementById("privacyCheck").checked;
+      state.consent.ethic = document.getElementById("ethicCheck").checked;
+      state.consent.voluntary = document.getElementById("consentVoluntary").checked;
+      state.consent.noTherapy = document.getElementById("consentNoTherapy").checked;
+      state.consent.audio = document.getElementById("consentAudio").checked;
+      state.consent.ai = document.getElementById("consentAi").checked;
+    }
+
+    function syncContextInputsToStore() {
+      const store = activeContextStore().target;
+      store.transcript = document.getElementById("transcriptInput").value.trim();
+      store.notes = document.getElementById("noteInput").value.trim();
+    }
+
+    function fillContextInputsFromStore() {
+      const store = activeContextStore().target;
+      document.getElementById("transcriptInput").value = store.transcript || "";
+      document.getElementById("noteInput").value = store.notes || "";
+    }
+
+    function resetTransientQuestionState() {
+      document.getElementById("extractState").textContent = "";
+      document.getElementById("sessionState").textContent = "";
+      document.getElementById("deepenState").textContent = "";
+    }
+
+    function renderIntro() {
+      renderLanguageButtons();
+      renderModeButtons();
+      renderIntroFlowList();
+
+      document.getElementById("ageCategorySelect").value = state.ageCategory;
+      document.getElementById("flowVariantSelect").value = state.flowVariant;
+      document.getElementById("aiProviderSelect").value = state.aiProvider;
+      document.getElementById("aiModelInput").value = state.aiModel || AI_DEFAULT_MODELS[state.aiProvider];
+      document.getElementById("clientNameInput").value = state.names.client;
+      document.getElementById("coachNameInput").value = state.names.coach;
+      document.getElementById("signatureInput").value = state.signature;
+      document.getElementById("privacyCheck").checked = state.consent.privacy;
+      document.getElementById("ethicCheck").checked = state.consent.ethic;
+      document.getElementById("consentVoluntary").checked = state.consent.voluntary;
+      document.getElementById("consentNoTherapy").checked = state.consent.noTherapy;
+      document.getElementById("consentAudio").checked = state.consent.audio;
+      document.getElementById("consentAi").checked = state.consent.ai;
+
+      const sampleBand = document.getElementById("sampleBand");
+      const sampleDisabled = !audioAllowedByAge();
+      sampleBand.classList.toggle("hidden", state.mode !== "coach" || sampleDisabled);
+      document.getElementById("coachNameInput").disabled = state.mode !== "coach";
+
+      const audioConsentRow = document.getElementById("consentAudioRow");
+      const audioConsentBox = document.getElementById("consentAudio");
+      const ageAudioHint = document.getElementById("ageAudioHint");
+      const ageConsentHint = document.getElementById("ageConsentHint");
+      if (sampleDisabled) {
+        audioConsentBox.checked = false;
+        state.consent.audio = false;
+        audioConsentBox.disabled = true;
+        audioConsentRow.style.opacity = "0.58";
+        ageAudioHint.textContent = "Unter 13 Jahre: Audio ist gesperrt. Erfassung erfolgt nur per Tastatur durch den Coach.";
+        ageConsentHint.textContent = "Unter 13 Jahre: stark vereinfachter Einwilligungsrahmen, keine Audioaufnahme.";
+      } else {
+        audioConsentBox.disabled = false;
+        audioConsentRow.style.opacity = "1";
+        ageAudioHint.textContent = "Audio ist nach aktivem Opt-in zulaessig.";
+        ageConsentHint.textContent = state.ageCategory === "13_15"
+          ? "13 bis 15 Jahre: vereinfachte Einwilligung und klare Sprache verwenden."
+          : "Ab 16 Jahren: Standard-Einwilligung mit allen Detailinformationen.";
+      }
+
+      const cState = state.samples.client.ready
+        ? `Probe gespeichert (${state.samples.client.transcript ? "mit Text" : "ohne Text"}).`
+        : "Noch keine Probe.";
+      const hState = state.samples.coach.ready
+        ? `Probe gespeichert (${state.samples.coach.transcript ? "mit Text" : "ohne Text"}).`
+        : "Noch keine Probe.";
+      document.getElementById("sampleClientState").textContent = cState;
+      document.getElementById("sampleCoachState").textContent = hState;
+    }
+
+    function phaseDone(phaseId) {
+      const phaseStore = state.phases[phaseId];
+      if (!phaseStore.mainDone) return false;
+      const mods = moduleCompletion(phaseStore);
+      return mods.done > 0 || phaseStore.deepenAsked;
+    }
+
+    function renderPhaseList() {
+      const list = document.getElementById("phaseList");
+      list.innerHTML = "";
+      PHASES.forEach((phase, index) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `phase-row ${index === state.activePhaseIndex ? "current" : ""} ${phaseDone(phase.id) ? "done" : ""}`;
+        row.innerHTML = `
+          <span class="phase-badge">${phase.id}</span>
+          <span>${phase.label}</span>
+          <span class="pill">${phaseDone(phase.id) ? "erledigt" : "offen"}</span>
+        `;
+        row.addEventListener("click", () => {
+          if (!state.micRunning) {
+            syncContextInputsToStore();
+            state.activePhaseIndex = index;
+            state.activeModuleId = null;
+            fillContextInputsFromStore();
+            resetTransientQuestionState();
+            render();
+          }
+        });
+        list.appendChild(row);
+      });
+    }
+
+    function renderPhaseStatus() {
+      const wrap = document.getElementById("phaseStatus");
+      wrap.innerHTML = "";
+      PHASES.forEach((phase) => {
+        const store = state.phases[phase.id];
+        const mods = moduleCompletion(store);
+        const line = document.createElement("div");
+        line.className = "summary-row";
+        line.innerHTML = `
+          <strong>${phase.id} - ${phase.label}</strong><br>
+          Hauptfrage: ${store.mainDone ? "ja" : "nein"}<br>
+          Vertiefungen: ${mods.done}/${mods.total}
+        `;
+        wrap.appendChild(line);
+      });
+    }
+
+    function renderQuestionHeader() {
+      const phase = currentPhase();
+      const contextLabel = document.getElementById("questionContextLabel");
+      const title = document.getElementById("mainQuestionTitle");
+      const subline = document.getElementById("mainQuestionSubline");
+      const follow = document.getElementById("followupList");
+      const speaker = document.getElementById("speakerButtons");
+
+      if (state.activeModuleId) {
+        const module = phase.modules.find((m) => m.id === state.activeModuleId);
+        contextLabel.textContent = `Vertiefung ${module.id}`;
+        title.textContent = module.prompt || module.title;
+        subline.textContent = `${phase.id} - ${phase.label}`;
+      } else {
+        contextLabel.textContent = `Hauptfrage ${phase.id}`;
+        title.textContent = phase.mainQuestion;
+        subline.textContent = `${phase.label}`;
+      }
+
+      follow.innerHTML = "";
+      phase.followUps.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        follow.appendChild(li);
+      });
+
+      speaker.innerHTML = "";
+      speaker.classList.toggle("active", state.mode === "coach");
+      if (state.mode === "coach") {
+        ["kunde", "coach"].forEach((label) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `speaker-btn ${state.activeSpeaker === label ? "active" : ""}`;
+          btn.textContent = label === "kunde" ? "Kunde spricht" : "Coach spricht";
+          btn.addEventListener("click", () => {
+            state.activeSpeaker = label;
+            render();
+          });
+          speaker.appendChild(btn);
+        });
+      }
+    }
+
+    function renderExtractedKeywords() {
+      const chips = document.getElementById("extractedChips");
+      chips.innerHTML = "";
+      const store = activeContextStore().target;
+      if (!store.keywords || store.keywords.length === 0) {
+        const span = document.createElement("span");
+        span.className = "small-note";
+        span.textContent = "Noch keine Begriffe extrahiert.";
+        chips.appendChild(span);
+        return;
+      }
+      store.keywords.forEach((term) => {
+        const chip = document.createElement("span");
+        chip.className = "pill";
+        chip.textContent = term;
+        chips.appendChild(chip);
+      });
+    }
+
+    function renderModuleChips() {
+      const wrap = document.getElementById("moduleChips");
+      wrap.innerHTML = "";
+      const phase = currentPhase();
+      const phaseStore = currentPhaseStore();
+      phase.modules.forEach((module) => {
+        const modStore = phaseStore.modules[module.id];
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = `chip ${state.activeModuleId === module.id ? "active" : ""} ${modStore.done ? "done" : ""}`;
+        chip.textContent = `${module.id}${modStore.done ? " ✓" : ""}`;
+        chip.addEventListener("click", () => {
+          if (state.micRunning) return;
+          syncContextInputsToStore();
+          state.activeModuleId = module.id;
+          fillContextInputsFromStore();
+          document.getElementById("sessionState").textContent = `${module.id} geoeffnet.`;
+          render();
+        });
+        wrap.appendChild(chip);
+      });
+    }
+
+    function ensureShuffledPool(moduleStore, basePool) {
+      if (!Array.isArray(moduleStore.poolOrder) || moduleStore.poolOrder.length !== basePool.length) {
+        const copy = [...basePool];
+        for (let i = copy.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        moduleStore.poolOrder = copy;
+        moduleStore.cursor = 0;
+      }
+      if (!Array.isArray(moduleStore.selected)) moduleStore.selected = [];
+    }
+
+    function toggleSelected(moduleStore, term) {
+      const exists = moduleStore.selected.some((item) => normalizeText(item) === normalizeText(term));
+      if (exists) {
+        moduleStore.selected = moduleStore.selected.filter((item) => normalizeText(item) !== normalizeText(term));
+      } else {
+        moduleStore.selected.push(term);
+      }
+      render();
+    }
+
+    function renderPickListModule(moduleDef, moduleStore, container) {
+      ensureShuffledPool(moduleStore, moduleDef.pool);
+      const start = moduleStore.cursor || 0;
+      const slice = moduleStore.poolOrder.slice(start, start + 5);
+      const chips = slice.map((word) => {
+        const isActive = moduleStore.selected.some((item) => normalizeText(item) === normalizeText(word));
+        return `<button type="button" class="chip ${isActive ? "active" : ""}" data-word="${word}">${word}</button>`;
+      }).join("");
+
+      container.innerHTML = `
+        <p class="small-note">Waehle passende Begriffe. Die App zeigt immer 5 pro Runde.</p>
+        <div class="chip-wrap">${chips || "<span class='small-note'>Keine weiteren Begriffe.</span>"}</div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn secondary" type="button" data-action="next-five">Naechste 5</button>
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderThemeTree(moduleStore, container) {
+      if (!moduleStore.stage || moduleStore.stage === "start") moduleStore.stage = "groups";
+      if (!moduleStore.groups) moduleStore.groups = [];
+      if (!moduleStore.selected) moduleStore.selected = [];
+
+      if (moduleStore.stage === "groups") {
+        const chips = Object.keys(THEME_GROUPS).map((group) => {
+          const active = moduleStore.groups.includes(group);
+          return `<button type="button" class="chip ${active ? "active" : ""}" data-group="${group}">${group}</button>`;
+        }).join("");
+        container.innerHTML = `
+          <p class="small-note">Schritt 1: Oberbegriffe waehlen.</p>
+          <div class="chip-wrap">${chips}</div>
+          <div class="btn-row" style="margin-top:9px">
+            <button class="btn secondary" type="button" data-action="theme-next">Weiter zu Unterthemen</button>
+          </div>
+        `;
+        return;
+      }
+
+      const pool = [...new Set(gatherByKeys(moduleStore.groups, THEME_GROUPS))];
+      ensureShuffledPool(moduleStore, pool);
+      const start = moduleStore.cursor || 0;
+      const slice = moduleStore.poolOrder.slice(start, start + 5);
+      const chips = slice.map((word) => {
+        const active = moduleStore.selected.some((item) => normalizeText(item) === normalizeText(word));
+        return `<button type="button" class="chip ${active ? "active" : ""}" data-word="${word}">${word}</button>`;
+      }).join("");
+      container.innerHTML = `
+        <p class="small-note">Schritt 2: Unterthemen waehlen.</p>
+        <div class="chip-wrap">${chips}</div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn secondary" type="button" data-action="next-five">Naechste 5</button>
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderNeedTree(moduleStore, container) {
+      if (!moduleStore.stage || moduleStore.stage === "start") moduleStore.stage = "groups";
+      if (!moduleStore.groups) moduleStore.groups = [];
+      if (!moduleStore.selected) moduleStore.selected = [];
+
+      if (moduleStore.stage === "groups") {
+        const chips = Object.keys(NEED_GROUPS).map((group) => {
+          const active = moduleStore.groups.includes(group);
+          return `<button type="button" class="chip ${active ? "active" : ""}" data-group="${group}">${group}</button>`;
+        }).join("");
+        container.innerHTML = `
+          <p class="small-note">Schritt 1: Beduerfnis-Oberbegriffe waehlen.</p>
+          <div class="chip-wrap">${chips}</div>
+          <div class="btn-row" style="margin-top:9px">
+            <button class="btn secondary" type="button" data-action="need-next">Weiter zu Einzelbegriffen</button>
+          </div>
+        `;
+        return;
+      }
+
+      const pool = [...new Set(gatherByKeys(moduleStore.groups, NEED_GROUPS))];
+      ensureShuffledPool(moduleStore, pool);
+      const slice = moduleStore.poolOrder.slice(moduleStore.cursor || 0, (moduleStore.cursor || 0) + 5);
+      const chips = slice.map((word) => {
+        const active = moduleStore.selected.some((item) => normalizeText(item) === normalizeText(word));
+        return `<button type="button" class="chip ${active ? "active" : ""}" data-word="${word}">${word}</button>`;
+      }).join("");
+      container.innerHTML = `
+        <p class="small-note">Schritt 2: Passe auswaehlen (immer 5er-Bloecke).</p>
+        <div class="chip-wrap">${chips}</div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn secondary" type="button" data-action="next-five">Naechste 5</button>
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function speakTerm(term) {
+      if (!("speechSynthesis" in window)) return;
+      const utter = new SpeechSynthesisUtterance(term);
+      utter.lang = state.language;
+      utter.rate = 0.95;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    }
+
+    function renderResonance(moduleDef, moduleStore, container) {
+      if (!Array.isArray(moduleStore.selected)) moduleStore.selected = [];
+      if (typeof moduleStore.cursor !== "number") moduleStore.cursor = 0;
+      const list = moduleDef.pool || [];
+      const current = list[moduleStore.cursor];
+
+      if (!current) {
+        container.innerHTML = `
+          <p class="small-note">Alle Begriffe durchlaufen.</p>
+          <div class="chip-wrap">${moduleStore.selected.map((w) => `<span class="pill">${w}</span>`).join("") || "<span class='small-note'>Keine Auswahl.</span>"}</div>
+          <div class="btn-row" style="margin-top:9px">
+            <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <p class="small-note">Wort wirken lassen. Bei Passung mit "Ja" bestaetigen.</p>
+        <div class="focus-word">${current}</div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn secondary" type="button" data-action="speak-word">Wort vorlesen</button>
+          <button class="btn good" type="button" data-action="resonance-yes">Ja passt</button>
+          <button class="btn secondary" type="button" data-action="resonance-next">Weiter</button>
+        </div>
+        <p class="small-note">Treffer bisher: ${moduleStore.selected.length}</p>
+      `;
+    }
+
+    function renderRoleStrength(moduleStore, container) {
+      if (!Array.isArray(moduleStore.roles)) moduleStore.roles = [];
+      if (!Array.isArray(moduleStore.selected)) moduleStore.selected = [];
+      const roleChips = ROLE_WORDS.map((role) => {
+        const active = moduleStore.roles.includes(role);
+        return `<button type="button" class="chip ${active ? "active" : ""}" data-role="${role}">${role}</button>`;
+      }).join("");
+
+      const suggested = [...new Set(gatherByKeys(moduleStore.roles, ROLE_TO_STRENGTH))];
+      const strengthChips = suggested.map((item) => {
+        const active = moduleStore.selected.includes(item);
+        return `<button type="button" class="chip ${active ? "active" : ""}" data-word="${item}">${item}</button>`;
+      }).join("");
+
+      container.innerHTML = `
+        <p class="small-note">Rollen waehlen, danach passende Staerken anklicken.</p>
+        <div class="chip-wrap">${roleChips}</div>
+        <hr style="border:none;border-top:1px solid #e2e8ee;margin:12px 0">
+        <div class="chip-wrap">${strengthChips || "<span class='small-note'>Waehle zuerst Rollen.</span>"}</div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderFreeKlemmt(moduleDef, moduleStore, container) {
+      if (!moduleStore.choiceMap) moduleStore.choiceMap = {};
+      if (typeof moduleStore.cursor !== "number") moduleStore.cursor = 0;
+      const word = moduleDef.pool[moduleStore.cursor];
+      if (!word) {
+        const free = Object.entries(moduleStore.choiceMap).filter(([, value]) => value === "frei").map(([key]) => key);
+        const klemmt = Object.entries(moduleStore.choiceMap).filter(([, value]) => value === "klemmt").map(([key]) => key);
+        container.innerHTML = `
+          <p class="small-note">Check abgeschlossen.</p>
+          <p><strong>frei:</strong> ${free.join(", ") || "-"}</p>
+          <p><strong>klemmt:</strong> ${klemmt.join(", ") || "-"}</p>
+          <div class="btn-row"><button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button></div>
+        `;
+        return;
+      }
+      container.innerHTML = `
+        <p class="small-note">Wort pruefen: rechts = frei, links = klemmt.</p>
+        <div class="focus-word">${word}</div>
+        <div class="swipe-grid">
+          <button class="btn warn" type="button" data-action="klemmt-left">Links: klemmt</button>
+          <button class="btn good" type="button" data-action="frei-right">Rechts: frei</button>
+        </div>
+      `;
+    }
+
+    function renderCareerSentence(moduleStore, container) {
+      if (!moduleStore.career) {
+        moduleStore.career = PROFESSION_IDEAS[Math.floor(Math.random() * PROFESSION_IDEAS.length)];
+      }
+      container.innerHTML = `
+        <p class="small-note">Satz ergaenzen und sprechen oder schreiben.</p>
+        <div class="focus-word">Diesen Beruf wuerde ich machen, wenn ... (${moduleStore.career})</div>
+        <div class="field" style="margin-top:9px">
+          <label for="moduleCareerInput">Ergaenzung</label>
+          <textarea id="moduleCareerInput">${moduleStore.customText || ""}</textarea>
+        </div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderTargetSwipe(moduleDef, moduleStore, container) {
+      if (!moduleStore.choiceMap) moduleStore.choiceMap = {};
+      if (typeof moduleStore.cursor !== "number") moduleStore.cursor = 0;
+      const current = moduleDef.pool[moduleStore.cursor];
+      if (!current) {
+        const interesting = Object.entries(moduleStore.choiceMap).filter(([, value]) => value === "yes").map(([key]) => key);
+        container.innerHTML = `
+          <p class="small-note">Zielgruppen durchlaufen.</p>
+          <p><strong>Interessant:</strong> ${interesting.join(", ") || "-"}</p>
+          <div class="field">
+            <label for="targetInterviewInput">Kurzes Interview (was muesste fuer diese Gruppen besser werden?)</label>
+            <textarea id="targetInterviewInput">${moduleStore.customText || ""}</textarea>
+          </div>
+          <div class="btn-row" style="margin-top:9px">
+            <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <p class="small-note">Swipe Logik: links = nicht interessant, rechts = interessant.</p>
+        <div class="focus-word">${current}</div>
+        <div class="swipe-grid">
+          <button class="btn secondary" type="button" data-action="target-no">Links: nicht interessant</button>
+          <button class="btn good" type="button" data-action="target-yes">Rechts: interessant</button>
+        </div>
+      `;
+    }
+
+    function renderImpactPhrase(moduleStore, container) {
+      if (!moduleStore.impactWord) moduleStore.impactWord = "";
+      const chips = WIRKUNGSWORTE.map((word) => `
+        <button type="button" class="chip ${moduleStore.impactWord === word ? "active" : ""}" data-impact="${word}">${word}</button>
+      `).join("");
+      container.innerHTML = `
+        <p class="small-note">Beitragsspur formulieren.</p>
+        <div class="chip-wrap">${chips}</div>
+        <div class="field" style="margin-top:9px">
+          <label for="impactSentenceInput">Ich moechte dazu beitragen, dass ...</label>
+          <textarea id="impactSentenceInput">${moduleStore.customText || ""}</textarea>
+        </div>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderNarrativeModule(moduleDef, container) {
+      container.innerHTML = `
+        <p class="small-note">Diese Vertiefung laeuft ueber Gespraech (Mikrofon) oder Freitext oben.</p>
+        <p class="small-note"><strong>Impuls:</strong> ${moduleDef.prompt || moduleDef.title}</p>
+        <div class="btn-row" style="margin-top:9px">
+          <button class="btn good" type="button" data-action="finish-module">Uebung abschliessen</button>
+        </div>
+      `;
+    }
+
+    function renderModuleWorkspace() {
+      const zone = document.getElementById("moduleWorkspace");
+      if (!state.activeModuleId) {
+        zone.classList.add("hidden");
+        zone.innerHTML = "";
+        return;
+      }
+      const moduleDef = currentPhase().modules.find((mod) => mod.id === state.activeModuleId);
+      const moduleStore = currentPhaseStore().modules[moduleDef.id];
+
+      zone.classList.remove("hidden");
+      const header = `<h4 class="module-title">${moduleDef.id} - ${moduleDef.title}${moduleStore.done ? " ✓" : ""}</h4>`;
+      zone.innerHTML = header;
+      const content = document.createElement("div");
+      zone.appendChild(content);
+
+      if (moduleDef.type === "pick_list") renderPickListModule(moduleDef, moduleStore, content);
+      if (moduleDef.type === "theme_tree") renderThemeTree(moduleStore, content);
+      if (moduleDef.type === "need_tree") renderNeedTree(moduleStore, content);
+      if (moduleDef.type === "resonance") renderResonance(moduleDef, moduleStore, content);
+      if (moduleDef.type === "role_strength") renderRoleStrength(moduleStore, content);
+      if (moduleDef.type === "free_klemmt") renderFreeKlemmt(moduleDef, moduleStore, content);
+      if (moduleDef.type === "career_sentence") renderCareerSentence(moduleStore, content);
+      if (moduleDef.type === "target_swipe") renderTargetSwipe(moduleDef, moduleStore, content);
+      if (moduleDef.type === "impact_phrase") renderImpactPhrase(moduleStore, content);
+      if (moduleDef.type === "narrative") renderNarrativeModule(moduleDef, content);
+
+      bindModuleWorkspaceEvents(zone, moduleDef, moduleStore);
+    }
+
+    function markModuleDone(moduleDef, moduleStore) {
+      if (document.getElementById("moduleCareerInput")) moduleStore.customText = document.getElementById("moduleCareerInput").value.trim();
+      if (document.getElementById("targetInterviewInput")) moduleStore.customText = document.getElementById("targetInterviewInput").value.trim();
+      if (document.getElementById("impactSentenceInput")) moduleStore.customText = document.getElementById("impactSentenceInput").value.trim();
+
+      const phaseLexicon = flattenPhaseLexicon(currentPhase());
+      const combinedText = [moduleStore.transcript, moduleStore.notes, moduleStore.customText, (moduleStore.selected || []).join(" ")].join(" ");
+      const extracted = extractKeywords(combinedText, phaseLexicon, { phaseId: currentPhase().id });
+      moduleStore.keywords = [...new Set([...(moduleStore.selected || []), ...extracted])].slice(0, 12);
+      moduleStore.done = true;
+      currentPhaseStore().deepenAsked = true;
+      document.getElementById("sessionState").textContent = `${moduleDef.id} gespeichert. Weitere Vertiefung moeglich.`;
+      render();
+    }
+
+    function bindModuleWorkspaceEvents(zone, moduleDef, moduleStore) {
+      zone.querySelectorAll("[data-word]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          toggleSelected(moduleStore, btn.dataset.word);
+        });
+      });
+      zone.querySelectorAll("[data-group]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const group = btn.dataset.group;
+          if (!moduleStore.groups) moduleStore.groups = [];
+          if (moduleStore.groups.includes(group)) {
+            moduleStore.groups = moduleStore.groups.filter((g) => g !== group);
+          } else {
+            moduleStore.groups.push(group);
+          }
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-role]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const role = btn.dataset.role;
+          if (!moduleStore.roles) moduleStore.roles = [];
+          if (moduleStore.roles.includes(role)) {
+            moduleStore.roles = moduleStore.roles.filter((r) => r !== role);
+          } else {
+            moduleStore.roles.push(role);
+          }
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-impact]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          moduleStore.impactWord = btn.dataset.impact;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='next-five']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          moduleStore.cursor = (moduleStore.cursor || 0) + 5;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='theme-next']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (!moduleStore.groups || moduleStore.groups.length === 0) {
+            document.getElementById("sessionState").textContent = "Bitte zuerst mindestens einen Oberbegriff waehlen.";
+            return;
+          }
+          moduleStore.stage = "terms";
+          moduleStore.poolOrder = null;
+          moduleStore.cursor = 0;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='need-next']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (!moduleStore.groups || moduleStore.groups.length === 0) {
+            document.getElementById("sessionState").textContent = "Bitte zuerst mindestens einen Oberbegriff waehlen.";
+            return;
+          }
+          moduleStore.stage = "terms";
+          moduleStore.poolOrder = null;
+          moduleStore.cursor = 0;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='speak-word']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          if (current) speakTerm(current);
+        });
+      });
+      zone.querySelectorAll("[data-action='resonance-yes']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          if (current && !moduleStore.selected.includes(current)) moduleStore.selected.push(current);
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='resonance-next']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='klemmt-left']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          moduleStore.choiceMap[current] = "klemmt";
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='frei-right']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          moduleStore.choiceMap[current] = "frei";
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='target-no']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          moduleStore.choiceMap[current] = "no";
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='target-yes']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const current = moduleDef.pool[moduleStore.cursor];
+          moduleStore.choiceMap[current] = "yes";
+          moduleStore.cursor += 1;
+          render();
+        });
+      });
+      zone.querySelectorAll("[data-action='finish-module']").forEach((btn) => {
+        btn.addEventListener("click", () => markModuleDone(moduleDef, moduleStore));
+      });
+    }
+
+    async function startMic(target) {
+      if (state.micRunning) return;
+      if (!audioAllowedByAge()) {
+        document.getElementById("micState").textContent = "Audio ist fuer diese Alterskategorie deaktiviert.";
+        return;
+      }
+      if (!state.consent.audio) {
+        document.getElementById("micState").textContent = "Audio-Opt-in fehlt. Bitte zuerst Einwilligung setzen.";
+        return;
+      }
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          document.getElementById("micState").textContent = "Mikrofon wird im Browser nicht unterstuetzt.";
+          return;
+        }
+        micRuntime.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micRuntime.chunks = [];
+        micRuntime.target = target;
+        micRuntime.interim = "";
+
+        const mimeCandidates = ["audio/webm;codecs=opus", "audio/webm"];
+        let recorder = null;
+        if (window.MediaRecorder) {
+          for (const mime of mimeCandidates) {
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime)) {
+              recorder = new MediaRecorder(micRuntime.stream, { mimeType: mime });
+              break;
+            }
+          }
+          if (!recorder) recorder = new MediaRecorder(micRuntime.stream);
+        }
+        micRuntime.recorder = recorder;
+        if (micRuntime.recorder) {
+          micRuntime.recorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) micRuntime.chunks.push(event.data);
+          };
+          micRuntime.recorder.start();
+        }
+
+        const SpeechApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechApi) {
+          const rec = new SpeechApi();
+          rec.lang = state.language;
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.onresult = (event) => {
+            let interim = "";
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+              const spoken = event.results[i][0].transcript.trim();
+              if (!spoken) continue;
+              const prefix = state.mode === "coach" ? `[${state.activeSpeaker}] ` : "";
+              if (event.results[i].isFinal) {
+                const store = micRuntime.target;
+                store.transcript = `${store.transcript ? `${store.transcript}\n` : ""}${prefix}${spoken}`;
+              } else {
+                interim = `${prefix}${spoken}`;
+              }
+            }
+            micRuntime.interim = interim;
+            document.getElementById("transcriptInput").value = `${micRuntime.target.transcript}${interim ? `\n${interim}` : ""}`.trim();
+          };
+          rec.onerror = () => {};
+          micRuntime.recognition = rec;
+          rec.start();
+        }
+
+        state.micRunning = true;
+        state.micStatus = "Mikrofon laeuft.";
+        render();
+      } catch (error) {
+        state.micRunning = false;
+        state.micStatus = "Mikrofon konnte nicht gestartet werden.";
+        render();
+      }
+    }
+
+    function stopMic(saveBlobTarget) {
+      if (!state.micRunning) return;
+      state.micRunning = false;
+      state.sampleRecordingKind = null;
+      state.micStatus = "Mikrofon gestoppt.";
+      if (micRuntime.recognition) {
+        try { micRuntime.recognition.stop(); } catch (error) {}
+      }
+      if (micRuntime.recorder) {
+        micRuntime.recorder.onstop = () => {
+          const blob = micRuntime.chunks.length > 0 ? new Blob(micRuntime.chunks, { type: micRuntime.chunks[0].type || "audio/webm" }) : null;
+          if (saveBlobTarget && blob) saveBlobTarget.blob = blob;
+          micRuntime.chunks = [];
+        };
+        try { micRuntime.recorder.stop(); } catch (error) {}
+      }
+      if (micRuntime.stream) {
+        micRuntime.stream.getTracks().forEach((track) => track.stop());
+      }
+      micRuntime.stream = null;
+      micRuntime.recorder = null;
+      micRuntime.recognition = null;
+      micRuntime.interim = "";
+      render();
+    }
+
+    async function toggleSample(kind) {
+      if (!audioAllowedByAge()) {
+        document.getElementById("introError").textContent = "Unter 13 Jahre: Stimmprobe ist deaktiviert.";
+        return;
+      }
+      if (!state.consent.audio) {
+        document.getElementById("introError").textContent = "Bitte zuerst Audio-Opt-in bestaetigen.";
+        return;
+      }
+      const target = state.samples[kind];
+      if (state.micRunning) {
+        if (state.sampleRecordingKind && state.sampleRecordingKind !== kind) {
+          document.getElementById("introError").textContent = "Bitte zuerst die laufende Stimmprobe stoppen.";
+          return;
+        }
+        stopMic(target);
+        target.ready = true;
+        target.transcript = (micRuntime.target && micRuntime.target.transcript) || target.transcript || "";
+        state.sampleRecordingKind = null;
+        document.getElementById("introError").textContent = "";
+        render();
+        return;
+      }
+      const temp = { transcript: "", notes: "", keywords: [] };
+      await startMic(temp);
+      state.sampleRecordingKind = kind;
+      state.micStatus = `Stimmprobe ${kind} laeuft.`;
+      render();
+      const btnId = kind === "client" ? "sampleClientState" : "sampleCoachState";
+      document.getElementById(btnId).textContent = "Probe laeuft ... nochmals klicken zum Stoppen.";
+      target.__temp = temp;
+    }
+
+    function extractCurrentKeywords() {
+      syncContextInputsToStore();
+      const phase = currentPhase();
+      const context = activeContextStore();
+      const raw = `${context.target.transcript || ""}\n${context.target.notes || ""}`;
+      if (detectTherapeuticRedAlert(raw)) {
+        state.redAlert = true;
+        context.target.keywords = ["RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT"];
+        document.getElementById("extractState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
+        renderExtractedKeywords();
+        return;
+      }
+      let lexicon = flattenPhaseLexicon(phase);
+      if (context.type === "module") {
+        if (context.def.type === "role_strength") lexicon = STRENGTH_WORDS;
+        if (context.def.type === "target_swipe") lexicon = flattenValues(CONTRIBUTION_GROUPS);
+      }
+      context.target.keywords = extractKeywords(raw, lexicon, { phaseId: phase.id });
+      document.getElementById("extractState").textContent = context.target.keywords.length > 0
+        ? `${context.target.keywords.length} Begriffe extrahiert.`
+        : "Keine klaren Treffer. Gerne Freitext ergaenzen.";
+      renderExtractedKeywords();
+      renderPhaseStatus();
+    }
+
+    function allMainDone() {
+      return PHASES.every((phase) => state.phases[phase.id].mainDone);
+    }
+
+    async function goToNextPhase() {
+      syncContextInputsToStore();
+      const phaseStore = currentPhaseStore();
+      if (!phaseStore.mainDone) {
+        document.getElementById("sessionState").textContent = "Bitte zuerst Hauptfrage als erledigt markieren.";
+        return;
+      }
+      if (state.activePhaseIndex < PHASES.length - 1) {
+        state.activePhaseIndex += 1;
+        state.activeModuleId = null;
+        resetTransientQuestionState();
+        fillContextInputsFromStore();
+        render();
+        return;
+      }
+      await prepareSummaryWithCloudFallback("sessionState");
+      setView("summary");
+    }
+
+    function markCurrentDone() {
+      syncContextInputsToStore();
+      if (!state.activeModuleId) {
+        const store = currentPhaseStore();
+        store.mainDone = true;
+        const raw = `${store.transcript || ""}\n${store.notes || ""}`;
+        if (detectTherapeuticRedAlert(raw)) {
+          state.redAlert = true;
+          store.keywords = ["RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT"];
+          document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
+          render();
+          return;
+        }
+        if (!store.keywords || store.keywords.length === 0) {
+          const phase = currentPhase();
+          store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
+        }
+        document.getElementById("sessionState").textContent = `Hauptfrage ${currentPhase().id} gespeichert.`;
+      } else {
+        const moduleDef = currentPhase().modules.find((mod) => mod.id === state.activeModuleId);
+        const moduleStore = currentPhaseStore().modules[state.activeModuleId];
+        markModuleDone(moduleDef, moduleStore);
+      }
+      render();
+    }
+
+    function uniqueTerms(values) {
+      const list = Array.isArray(values) ? values : [];
+      return list
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .filter((item, index, arr) => arr.findIndex((x) => normalizeText(x) === normalizeText(item)) === index);
+    }
+
+    function collectMainAnswersForAi() {
+      const phaseText = (phaseId) => {
+        const phaseStore = state.phases[phaseId];
+        const main = [phaseStore.transcript, phaseStore.notes].filter(Boolean).join("\n");
+        const modules = Object.values(phaseStore.modules || {})
+          .map((module) => {
+            const selected = Array.isArray(module.selected) ? module.selected.join(" ") : "";
+            return [module.transcript, module.notes, module.customText, selected].filter(Boolean).join(" ");
+          })
+          .filter(Boolean)
+          .join("\n");
+        return [main, modules].filter(Boolean).join("\n").trim();
+      };
+
+      return {
+        S: phaseText("S"),
+        T: phaseText("T"),
+        A: phaseText("A"),
+        R: phaseText("R")
+      };
+    }
+
+    function applyCloudAnalysis(analysis) {
+      const clusters = (analysis && analysis.clusters) || {};
+      const phaseClusterMap = {
+        S: clusters.koennen || [],
+        T: clusters.lebendigkeit || [],
+        A: clusters.resonanz_beduerfnisse || [],
+        R: clusters.beitrag_wirksamkeit || []
+      };
+
+      Object.entries(phaseClusterMap).forEach(([phaseId, terms]) => {
+        const phaseStore = state.phases[phaseId];
+        const merged = uniqueTerms([...(Array.isArray(terms) ? terms : []), ...(phaseStore.keywords || [])]);
+        phaseStore.keywords = merged.slice(0, 12);
+      });
+
+      const aiOptions = uniqueTerms(analysis.klarstarter_satz_entwuerfe || []).slice(0, 4);
+      if (aiOptions.length > 0) {
+        state.sentenceOptions = aiOptions;
+        state.selectedSentenceOption = 0;
+        state.sentence = aiOptions[0];
+        state.sentenceApproved = false;
+      }
+
+      if (analysis.luecken_analyse) {
+        state.lueckenAnalyse = String(analysis.luecken_analyse).trim();
+      }
+      if (analysis.empfohlene_vertiefungsfrage) {
+        state.empfehlteVertiefungsfrage = String(analysis.empfohlene_vertiefungsfrage).trim();
+      }
+      state.redAlert = Boolean(state.redAlert || analysis.red_alert);
+      state.lastAnalysisSource = "cloud";
+    }
+
+    async function runCloudAnalysis() {
+      const answers = collectMainAnswersForAi();
+      const payload = {
+        sessionId: state.sessionId || createSessionId(),
+        provider: state.aiProvider,
+        model: state.aiModel || AI_DEFAULT_MODELS[state.aiProvider],
+        ageCategory: state.ageCategory,
+        flowVariant: state.flowVariant,
+        aliases: {
+          client: state.names.client,
+          coach: state.mode === "coach" ? state.names.coach : ""
+        },
+        consent: state.consent,
+        answers
+      };
+
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok || !result.analysis) {
+        throw new Error(result?.error || "Cloud-Analyse nicht verfuegbar.");
+      }
+      applyCloudAnalysis(result.analysis);
+      return true;
+    }
+
+    async function prepareSummaryWithCloudFallback(statusNodeId = "sessionState") {
+      const statusNode = document.getElementById(statusNodeId);
+      try {
+        statusNode.textContent = "KI-Auswertung laeuft ...";
+        await runCloudAnalysis();
+
+        // Risikoanalyse weiterhin lokal aus den finalen Clustern berechnen.
+        const aiGap = state.lueckenAnalyse;
+        const aiQuestion = state.empfehlteVertiefungsfrage;
+        buildGapAndRiskAnalysis();
+        if (aiGap) state.lueckenAnalyse = aiGap;
+        if (aiQuestion) state.empfehlteVertiefungsfrage = aiQuestion;
+
+        if (!state.sentence || !state.sentenceOptions || state.sentenceOptions.length === 0) {
+          buildSentence();
+        }
+        statusNode.textContent = "KI-Auswertung von " + (state.aiProvider === "gemini" ? "Gemini" : "ChatGPT") + " abgeschlossen.";
+      } catch (error) {
+        state.lastAnalysisSource = "lokal";
+        buildSentence();
+        statusNode.textContent = "Cloud-KI nicht erreichbar. Lokale Auswertung wurde verwendet.";
+      }
+    }
+
+    function keywordBundleForPhase(phaseId) {
+      const phaseStore = state.phases[phaseId];
+      const all = [...phaseStore.keywords];
+      Object.values(phaseStore.modules).forEach((module) => {
+        (module.keywords || []).forEach((item) => all.push(item));
+      });
+      const unique = all.filter((item, idx, arr) => arr.findIndex((x) => normalizeText(x) === normalizeText(item)) === idx);
+      return unique;
+    }
+
+    function pickTerms(list, count, fallback) {
+      if (!Array.isArray(list) || list.length === 0) return [fallback];
+      const picked = list.slice(0, count);
+      return picked.length > 0 ? picked : [fallback];
+    }
+
+    function joinNatural(list) {
+      if (!list || list.length === 0) return "";
+      if (list.length === 1) return list[0];
+      if (list.length === 2) return `${list[0]} und ${list[1]}`;
+      return `${list.slice(0, -1).join(", ")} und ${list[list.length - 1]}`;
+    }
+
+    function semanticKey(term) {
+      const tokens = tokenize(term);
+      if (!tokens || tokens.length === 0) return normalizeText(term);
+      const stems = tokens.map((token) => stemToken(token)).filter(Boolean);
+      return stems.sort().join("_");
+    }
+
+    function computeOverlaps() {
+      const phaseWords = {
+        S: keywordBundleForPhase("S"),
+        T: keywordBundleForPhase("T"),
+        A: keywordBundleForPhase("A"),
+        R: keywordBundleForPhase("R")
+      };
+      const map = {};
+      Object.entries(phaseWords).forEach(([phaseId, terms]) => {
+        terms.forEach((term) => {
+          const key = semanticKey(term);
+          if (!map[key]) {
+            map[key] = { label: term, phases: new Set() };
+          }
+          map[key].phases.add(phaseId);
+        });
+      });
+
+      return Object.values(map)
+        .filter((entry) => entry.phases.size >= 2)
+        .map((entry) => ({ label: entry.label, phaseCount: entry.phases.size }))
+        .sort((a, b) => b.phaseCount - a.phaseCount || a.label.localeCompare(b.label));
+    }
+
+    function getPhaseKeywordCount(phaseId) {
+      return keywordBundleForPhase(phaseId).length;
+    }
+
+    function buildGapAndRiskAnalysis() {
+      const counts = {
+        S: getPhaseKeywordCount("S"),
+        T: getPhaseKeywordCount("T"),
+        A: getPhaseKeywordCount("A"),
+        R: getPhaseKeywordCount("R")
+      };
+      const present = Object.keys(counts).filter((id) => counts[id] > 0);
+      const presentKey = present.sort().join("");
+
+      const gapMap = {
+        "ASR": {
+          gap: "Lebendigkeit/Wollen fehlt: Funktionieren ohne inneren Antrieb moeglich.",
+          question: "Es koennte sein, dass du gut funktionierst, aber noch genauer pruefen solltest, was dich wirklich zieht. Was macht dich innerlich wach?"
+        },
+        "RST": {
+          gap: "Resonanz/Beduerfnisse fehlt: sinnvoll, aber erschoepfend.",
+          question: "Es koennte sein, dass die Spur sinnvoll ist, aber noch nicht genug traegt. Was brauchst du, damit dieser Weg langfristig tragfaehig bleibt?"
+        },
+        "AST": {
+          gap: "Beitrag/Wirksamkeit fehlt: stimmig fuer mich, aber Richtung unklar.",
+          question: "Es koennte sein, dass vieles stimmig fuer dich ist, aber die Wirkungsrichtung noch unklar bleibt. Wofuer moechtest du damit wirksam werden?"
+        },
+        "ART": {
+          gap: "Koennen/Ressourcen fehlt: Begeisterung da, aber Ueberforderung moeglich.",
+          question: "Es koennte sein, dass viel Begeisterung da ist, aber noch Kompetenzen aufgebaut werden muessen. Was muesstest du lernen, ueben oder ausprobieren?"
+        }
+      };
+
+      const riskMap = {
+        "ST": "Koennen + Lebendigkeit: Talentierte Freude. Risiko: Verbleib im Hobby ohne Nutzen/Tragfaehigkeit. Frage: Fuer wen koennte das nuetzlich sein?",
+        "SR": "Koennen + Beitrag: Pflichtbewusstes Wirken. Risiko: Funktionieren ohne eigene Lebendigkeit. Frage: Was daran macht dich persoenlich lebendig?",
+        "AS": "Koennen + Resonanz: Bequeme Kompetenz. Risiko: Komfortzone/Stagnation. Frage: Wofuer moechtest du deine Faehigkeiten einsetzen?",
+        "RT": "Lebendigkeit + Beitrag: Mission ohne Boden. Risiko: Burnout durch fehlende Kompetenzbasis. Frage: Welche Kompetenzen fehlen noch?",
+        "AT": "Lebendigkeit + Resonanz: Persoenliche Freude. Risiko: Selbstbezug ohne Wirkung nach aussen. Frage: Wem koennte das nuetzen?",
+        "AR": "Resonanz + Beitrag: Sinnvolles Helfen. Risiko: schnelle Erschoepfung ohne passende Ressourcen. Frage: Was kannst du realistisch und gesund leisten?"
+      };
+
+      let gap = "Noch keine eindeutige Dreifach-Luecke erkannt.";
+      let question = "Bitte die offenen Bereiche im Gespraech weiter verdichten.";
+      if (present.length === 3 && gapMap[presentKey]) {
+        gap = gapMap[presentKey].gap;
+        question = gapMap[presentKey].question;
+      } else if (present.length === 4) {
+        gap = "Alle vier Cluster sind vorhanden. Fokus auf Feinschliff und realistischen naechsten Schritt.";
+        question = "Welcher kleine Testschritt in den naechsten 24 Stunden prueft diese Spur am besten?";
+      }
+
+      let risk = "Keine dominante Zweifach-Ueberlappung erkannt.";
+      if (present.length === 2) {
+        const riskKey = present.sort().join("");
+        risk = riskMap[riskKey] || risk;
+      }
+
+      state.lueckenAnalyse = gap;
+      state.empfehlteVertiefungsfrage = question;
+      state.risikoAnalyse = risk;
+    }
+
+    function deriveNeedDefinitionLines() {
+      const needTerms = keywordBundleForPhase("A");
+      const lines = [];
+      Object.keys(NEED_TAG_DEFINITIONS).forEach((key) => {
+        const hit = needTerms.some((term) => normalizeText(term).includes(key) || key.includes(normalizeText(term)));
+        if (hit) {
+          lines.push(`${key}: ${NEED_TAG_DEFINITIONS[key]}`);
+        }
+      });
+      return lines.slice(0, 6);
+    }
+
+    function buildSentenceOptions() {
+      buildGapAndRiskAnalysis();
+      if (state.redAlert) {
+        return [
+          "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT",
+          "Das Gespraech enthaelt Hinweise auf eine moegliche akute Belastung. Bitte keine weitere KI-Verdichtung, sondern direkte Weiterleitung an geeignete Fachstellen."
+        ];
+      }
+
+      const s = keywordBundleForPhase("S");
+      const t = keywordBundleForPhase("T");
+      const a = keywordBundleForPhase("A");
+      const r = keywordBundleForPhase("R");
+      const overlaps = computeOverlaps();
+
+      const strengths = joinNatural(pickTerms(s, 3, "deine Staerken"));
+      const interests = joinNatural(pickTerms(t, 3, "deine Interessen"));
+      const needs = joinNatural(pickTerms(a, 3, "deine Bedingungen"));
+      const contributions = joinNatural(pickTerms(r, 3, "deinen Beitrag"));
+      const overlapTerms = joinNatural(overlaps.slice(0, 4).map((item) => item.label));
+      const overlapLine = overlapTerms
+        ? `Wiederkehrend ueber mehrere Bereiche sind: ${overlapTerms}.`
+        : "Es zeigen sich erste Verbindungen zwischen deinen Aussagen in den vier Bereichen.";
+
+      const actionStep = state.flowVariant === "quick"
+        ? "Ich teste diese Spur innerhalb der naechsten 24 Stunden in einem kleinen, konkreten Schritt."
+        : "Ich formuliere fuer die kommende Woche einen klaren Erprobungsschritt und hole mir dazu ein Feedback ein.";
+      const actionStepShort = state.flowVariant === "quick"
+        ? "ein kleiner Testschritt innerhalb der naechsten 24 Stunden"
+        : "ein klarer Erprobungsschritt in der kommenden Woche";
+
+      const valueWord = pickTerms(a, 1, "Stimmigkeit")[0];
+      const feelingWord = pickTerms(t, 1, "Energie")[0];
+
+      const options = [
+        `Mir ist wichtig, dass ${contributions} geschieht. Ich kann dazu beitragen, weil ich ${strengths} mitbringe. Lebendig werde ich, wenn ${interests} moeglich ist. Damit es mir dabei gut geht, brauche ich ${needs}. ${actionStep} ${overlapLine}`,
+        `In meiner Arbeit und in meinem Leben ist mir wichtig, dass ${contributions} Raum bekommt. Ich spuere, dass ich dazu beitragen kann, weil ich ${strengths} einbringen kann. Lebendig werde ich, wenn ${interests} moeglich ist. Damit dieser Weg tragfaehig bleibt, brauche ich ${needs}. ${actionStep} ${overlapLine}`,
+        `In dieser Welt ist mir wichtig, dass ${contributions} geschieht. Ich spuere, dass ich dazu beitragen kann, weil ich ${strengths} gezielt einsetzen kann. Wenn ich das tue, fuehle ich ${feelingWord}, weil mir ${valueWord} wichtig ist. Damit ich auf diesem Weg lebendig bleibe, achte ich darauf, dass ich genug ${needs} erhalte. Mein erster mutiger Schritt ab morgen ist: ${actionStepShort}.`,
+        `Dein Profil zeigt eine moegliche Spur: Mit ${strengths} willst du in ${interests} wirksam werden. Wichtig ist dir dabei ${needs}. Fuer andere soll dadurch ${contributions} entstehen. ${overlapLine} ${state.empfehlteVertiefungsfrage}`
+      ];
+
+      return options
+        .filter((text, index, arr) => arr.indexOf(text) === index)
+        .slice(0, 4);
+    }
+
+    function buildSentence() {
+      const options = buildSentenceOptions();
+      state.sentenceOptions = options;
+      state.selectedSentenceOption = 0;
+      state.sentence = options[0] || "Es ist eine erste Spur entstanden. Bitte ergaenze den Merksatz.";
+      state.sentenceApproved = false;
+      state.lastAnalysisSource = "lokal";
+    }
+
+    function escapePdfText(text) {
+      return text
+        .replace(/\\/g, "\\\\")
+        .replace(/\(/g, "\\(")
+        .replace(/\)/g, "\\)");
+    }
+
+    function buildPdfBytes(lines) {
+      const pageLineLimit = 42;
+      const pages = [];
+      for (let i = 0; i < lines.length; i += pageLineLimit) {
+        pages.push(lines.slice(i, i + pageLineLimit));
+      }
+
+      const objects = [];
+      function addObject(content) {
+        objects.push(content);
+        return objects.length;
+      }
+
+      const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+      const pageIds = [];
+      const contentIds = [];
+
+      pages.forEach((pageLines) => {
+        let stream = "BT\n/F1 11 Tf\n50 795 Td\n";
+        pageLines.forEach((line, index) => {
+          if (index === 0) {
+            stream += `(${escapePdfText(line)}) Tj\n`;
+          } else {
+            stream += `0 -17 Td (${escapePdfText(line)}) Tj\n`;
+          }
+        });
+        stream += "ET";
+        const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+        contentIds.push(contentId);
+        const pageId = addObject("<< /Type /Page /Parent PAGES_REF /MediaBox [0 0 595 842] /Resources << /Font << /F1 FONT_REF 0 R >> >> /Contents CONTENT_REF 0 R >>");
+        pageIds.push(pageId);
+      });
+
+      const kids = pageIds.map((id) => `${id} 0 R`).join(" ");
+      const pagesId = addObject(`<< /Type /Pages /Kids [${kids}] /Count ${pageIds.length} >>`);
+      const rootId = addObject(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+
+      pageIds.forEach((pageId, index) => {
+        let content = objects[pageId - 1];
+        content = content.replace("PAGES_REF", `${pagesId} 0 R`);
+        content = content.replace("FONT_REF", `${fontId}`);
+        content = content.replace("CONTENT_REF", `${contentIds[index]}`);
+        objects[pageId - 1] = content;
+      });
+
+      let pdf = "%PDF-1.4\n";
+      const offsets = [0];
+      objects.forEach((obj, index) => {
+        offsets.push(pdf.length);
+        pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+      });
+      const xrefOffset = pdf.length;
+      pdf += `xref\n0 ${objects.length + 1}\n`;
+      pdf += "0000000000 65535 f \n";
+      for (let i = 1; i <= objects.length; i += 1) {
+        pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+      }
+      pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${rootId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+      return new TextEncoder().encode(pdf);
+    }
+
+    function createPdfAndReset() {
+      const date = new Date();
+      const lineBreak = "----------------------------------------";
+      const needDefinitionLines = deriveNeedDefinitionLines();
+      const lines = [
+        "Klarstarter Ergebnis",
+        `${date.toLocaleDateString("de-CH")} ${date.toLocaleTimeString("de-CH")}`,
+        lineBreak,
+        `Session-ID: ${state.sessionId || "-"}`,
+        `Kunde Alias: ${state.names.client || "-"}`,
+        `Coach Alias: ${state.mode === "coach" ? (state.names.coach || "-") : "solo"}`,
+        `Alterskategorie: ${state.ageCategory}`,
+        `Modus: ${state.flowVariant}`,
+        `KI-Anbieter: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT (OpenAI)"}`,
+        `KI-Modell: ${state.aiModel || "-"}`,
+        `Auswertungsquelle: ${state.lastAnalysisSource === "cloud" ? "Cloud-KI" : "lokale Analyse"}`,
+        `KI-Hinweis: KI-Strukturierung, keine automatisierte Einzelfallentscheidung.`,
+        lineBreak
+      ];
+
+      PHASES.forEach((phase) => {
+        const words = keywordBundleForPhase(phase.id);
+        lines.push(`${phase.id} - ${phase.label}`);
+        lines.push(`Hauptfrage: ${phase.mainQuestion}`);
+        lines.push(`Begriffe: ${words.join(", ") || "-"}`);
+        lines.push("");
+      });
+      lines.push(lineBreak);
+      lines.push("Klarstarter Satz:");
+      lines.push(state.sentence || "-");
+      lines.push("");
+      lines.push("Lueckenanalyse:");
+      lines.push(state.lueckenAnalyse || "-");
+      lines.push("Empfohlene Vertiefungsfrage:");
+      lines.push(state.empfehlteVertiefungsfrage || "-");
+      lines.push("Risikoanalyse:");
+      lines.push(state.risikoAnalyse || "-");
+      if (needDefinitionLines.length > 0) {
+        lines.push("");
+        lines.push("Beduerfnis-Definitionen:");
+        needDefinitionLines.forEach((item) => lines.push(item));
+      }
+      lines.push(lineBreak);
+
+      const bytes = buildPdfBytes(lines);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `klarstarter-ergebnis-${date.toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      document.getElementById("summaryState").textContent = "PDF erstellt. Daten werden jetzt geloescht.";
+      hardReset(true);
+    }
+
+    function hardReset(keepMessage = false) {
+      if (state.micRunning) stopMic(null);
+      state.activePhaseIndex = 0;
+      state.activeModuleId = null;
+      state.sampleRecordingKind = null;
+      state.phases = createPhaseStore();
+      state.samples = {
+        client: { ready: false, transcript: "", blob: null },
+        coach: { ready: false, transcript: "", blob: null }
+      };
+      state.sentence = "";
+      state.sentenceApproved = false;
+      state.sentenceOptions = [];
+      state.selectedSentenceOption = 0;
+      state.lueckenAnalyse = "";
+      state.risikoAnalyse = "";
+      state.empfehlteVertiefungsfrage = "";
+      state.lastAnalysisSource = "lokal";
+      state.redAlert = false;
+      state.sessionId = "";
+      if (!keepMessage) document.getElementById("summaryState").textContent = "";
+      setTimeout(() => {
+        state.names.client = "";
+        state.names.coach = "";
+        state.signature = "";
+        state.ageCategory = "16_17";
+        state.flowVariant = "quick";
+        state.consent.voluntary = false;
+        state.consent.noTherapy = false;
+        state.consent.audio = false;
+        state.consent.ai = false;
+        state.consent.privacy = false;
+        state.consent.ethic = false;
+        setView("intro");
+      }, keepMessage ? 250 : 0);
+    }
+
+    function renderSummary() {
+      const rows = document.getElementById("summaryRows");
+      rows.innerHTML = "";
+      PHASES.forEach((phase) => {
+        const row = document.createElement("div");
+        row.className = "summary-row";
+        const terms = keywordBundleForPhase(phase.id);
+        row.innerHTML = `<strong>${phase.id} - ${phase.label}</strong><br>${terms.join(", ") || "-"}`;
+        rows.appendChild(row);
+      });
+
+      if (!state.sentenceOptions || state.sentenceOptions.length === 0) {
+        state.sentenceOptions = buildSentenceOptions();
+      }
+
+      document.getElementById("gapAnalysisText").textContent = state.lueckenAnalyse || "-";
+      document.getElementById("recommendedQuestionText").textContent = state.empfehlteVertiefungsfrage || "-";
+      document.getElementById("riskAnalysisText").textContent = state.risikoAnalyse || "-";
+      document.getElementById("analysisSourceLine").textContent = state.lastAnalysisSource === "cloud"
+        ? `Analysequelle: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT"} (${state.aiModel || "-"})`
+        : "Analysequelle: lokal";
+
+      const optionsWrap = document.getElementById("sentenceOptions");
+      optionsWrap.innerHTML = "";
+      state.sentenceOptions.forEach((optionText, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `sentence-option ${state.selectedSentenceOption === index ? "active" : ""}`;
+        button.innerHTML = `${optionText}<span class="small-note">Variante ${index + 1} uebernehmen</span>`;
+        button.addEventListener("click", () => {
+          state.selectedSentenceOption = index;
+          state.sentence = optionText;
+          document.getElementById("sentenceOutput").value = optionText;
+          renderSummary();
+          document.getElementById("summaryState").textContent = `Variante ${index + 1} uebernommen.`;
+        });
+        optionsWrap.appendChild(button);
+      });
+
+      document.getElementById("sentenceOutput").value = state.sentence;
+    }
+
+    function renderSession() {
+      renderPhaseList();
+      renderPhaseStatus();
+      renderQuestionHeader();
+      fillContextInputsFromStore();
+      renderExtractedKeywords();
+      renderModuleChips();
+      renderModuleWorkspace();
+      const micStartBtn = document.getElementById("micStartBtn");
+      const micStopBtn = document.getElementById("micStopBtn");
+      const noAudio = !audioAllowedByAge();
+      micStartBtn.disabled = noAudio;
+      micStopBtn.disabled = noAudio;
+      document.getElementById("micState").textContent = noAudio
+        ? "Audio ist fuer diese Alterskategorie deaktiviert. Bitte per Text erfassen."
+        : state.micStatus;
+      document.getElementById("deepenState").textContent = currentPhaseStore().deepenAsked
+        ? "Vertiefungen wurden bereits geoeffnet. Erledigte Module sind abgehakt."
+        : "Wenn keine Vertiefung noetig ist, direkt zur naechsten Hauptfrage.";
+      document.getElementById("nextPhaseBtn").textContent = state.activePhaseIndex === PHASES.length - 1
+        ? "Auswertung anzeigen"
+        : "Naechste Hauptfrage";
+      if (state.redAlert) {
+        document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
+      }
+    }
+
+    function render() {
+      updateProgress();
+      if (state.view === "intro") renderIntro();
+      if (state.view === "session") renderSession();
+      if (state.view === "summary") renderSummary();
+    }
+
+    document.getElementById("startSessionBtn").addEventListener("click", () => {
+      readIntroForm();
+      const error = document.getElementById("introError");
+      error.textContent = "";
+      if (!state.names.client) {
+        error.textContent = "Bitte Kunde/Klient Alias eintragen.";
+        return;
+      }
+      if (/\s/.test(state.names.client)) {
+        error.textContent = "Bitte Alias ohne Leerzeichen verwenden (kein Klarname).";
+        return;
+      }
+      if (state.mode === "coach" && !state.names.coach) {
+        error.textContent = "Bitte Coach Alias eintragen.";
+        return;
+      }
+      if (state.mode === "coach" && /\s/.test(state.names.coach)) {
+        error.textContent = "Bitte Coach Alias ohne Leerzeichen verwenden.";
+        return;
+      }
+      if (!state.consent.voluntary || !state.consent.noTherapy || !state.consent.ai) {
+        error.textContent = "Bitte alle Pflicht-Einwilligungen bestaetigen (Freiwilligkeit, Kein Beratungsersatz, KI-Verarbeitung).";
+        return;
+      }
+      if (!state.consent.privacy || !state.consent.ethic) {
+        error.textContent = "Bitte Datenschutz und Ethikkodex bestaetigen.";
+        return;
+      }
+      if (requiredAudioConsent() && !state.consent.audio) {
+        error.textContent = "Bitte Audio-Transkriptions-Einwilligung bestaetigen oder Alterskategorie anpassen.";
+        return;
+      }
+      if (!state.signature) {
+        error.textContent = "Bitte Unterschrift eintragen.";
+        return;
+      }
+      if (state.mode === "coach" && audioAllowedByAge() && (!state.samples.client.ready || !state.samples.coach.ready)) {
+        error.textContent = "Bitte beide Stimmproben aufnehmen.";
+        return;
+      }
+      state.sessionId = createSessionId();
+      state.activePhaseIndex = 0;
+      state.activeModuleId = null;
+      state.redAlert = false;
+      state.micStatus = "Mikrofon aus.";
+      setView("session");
+    });
+
+    document.getElementById("sampleClientBtn").addEventListener("click", () => toggleSample("client"));
+    document.getElementById("sampleCoachBtn").addEventListener("click", () => toggleSample("coach"));
+
+    document.getElementById("micStartBtn").addEventListener("click", async () => {
+      syncContextInputsToStore();
+      const store = activeContextStore().target;
+      await startMic(store);
+    });
+
+    document.getElementById("micStopBtn").addEventListener("click", () => {
+      stopMic(null);
+      syncContextInputsToStore();
+    });
+
+    document.getElementById("extractBtn").addEventListener("click", extractCurrentKeywords);
+    document.getElementById("completeContextBtn").addEventListener("click", markCurrentDone);
+
+    document.getElementById("deepenYesBtn").addEventListener("click", () => {
+      currentPhaseStore().deepenAsked = true;
+      document.getElementById("sessionState").textContent = "Vertiefungen geoeffnet. Bitte Modul waehlen.";
+      render();
+    });
+
+    document.getElementById("deepenNoBtn").addEventListener("click", () => {
+      currentPhaseStore().deepenAsked = true;
+      state.activeModuleId = null;
+      document.getElementById("sessionState").textContent = "Ohne Vertiefung weiter.";
+      render();
+    });
+
+    document.getElementById("nextPhaseBtn").addEventListener("click", async () => {
+      if (state.activePhaseIndex === PHASES.length - 1 && currentPhaseStore().mainDone) {
+        await prepareSummaryWithCloudFallback("sessionState");
+        setView("summary");
+        return;
+      }
+      await goToNextPhase();
+    });
+
+    document.getElementById("transcriptInput").addEventListener("input", () => {
+      syncContextInputsToStore();
+    });
+    document.getElementById("noteInput").addEventListener("input", () => {
+      syncContextInputsToStore();
+    });
+
+    document.getElementById("regenerateSentenceBtn").addEventListener("click", async () => {
+      await prepareSummaryWithCloudFallback("summaryState");
+      renderSummary();
+      if (state.lastAnalysisSource === "lokal") {
+        document.getElementById("summaryState").textContent = "Satz lokal neu formuliert.";
+      }
+    });
+
+    document.getElementById("approveSentenceBtn").addEventListener("click", () => {
+      state.sentence = document.getElementById("sentenceOutput").value.trim();
+      state.sentenceApproved = true;
+      document.getElementById("summaryState").textContent = "Satz als passend markiert.";
+    });
+
+    document.getElementById("pdfBtn").addEventListener("click", () => {
+      state.sentence = document.getElementById("sentenceOutput").value.trim();
+      if (!state.sentence) {
+        document.getElementById("summaryState").textContent = "Bitte zuerst einen Satz eintragen.";
+        return;
+      }
+      createPdfAndReset();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      hardReset(false);
+    });
+
+    document.getElementById("ageCategorySelect").addEventListener("change", (event) => {
+      state.ageCategory = event.target.value;
+      if (!audioAllowedByAge()) {
+        state.consent.audio = false;
+        state.samples.client = { ready: false, transcript: "", blob: null };
+        state.samples.coach = { ready: false, transcript: "", blob: null };
+      }
+      render();
+    });
+
+    document.getElementById("flowVariantSelect").addEventListener("change", (event) => {
+      state.flowVariant = event.target.value;
+    });
+
+    document.getElementById("aiProviderSelect").addEventListener("change", (event) => {
+      const previousProvider = state.aiProvider;
+      const previousDefault = AI_DEFAULT_MODELS[previousProvider] || "";
+      const currentModel = (state.aiModel || "").trim();
+      state.aiProvider = event.target.value;
+      if (!currentModel || currentModel === previousDefault) {
+        state.aiModel = AI_DEFAULT_MODELS[state.aiProvider];
+      }
+      renderIntro();
+    });
+
+    document.getElementById("aiModelInput").addEventListener("input", (event) => {
+      state.aiModel = event.target.value.trim();
+    });
+
+    document.getElementById("emergencyDeleteBtn").addEventListener("click", () => {
+      hardReset(false);
+      document.getElementById("introError").textContent = "Sitzung wurde sofort abgebrochen und Daten wurden geloescht.";
+    });
+
+    render();
+  </script>
+</body>
+</html>

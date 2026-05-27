@@ -1,0 +1,249 @@
+:root {
+  --bg: #f5f7f8;
+  --surface: #ffffff;
+  --line: #d8e0e4;
+  --text: #1f2b33;
+  --muted: #60717d;
+  --primary: #2b7b78;
+  --danger: #b9493a;
+  --ok: #2a7f47;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  width: min(1100px, calc(100% - 28px));
+  margin: 14px auto 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.topbar,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.topbar p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.panel {
+  padding: 14px;
+}
+
+.panel h2,
+.panel h3,
+.panel h4 {
+  margin: 0 0 10px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.grid.two {
+  grid-template-columns: 1fr 1fr;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  background: #fff;
+  color: var(--text);
+}
+
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.consent {
+  margin-top: 10px;
+  display: grid;
+  gap: 7px;
+}
+
+.consent label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #2f414e;
+  font-size: 0.93rem;
+  cursor: pointer;
+}
+
+.consent input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin-top: 2px;
+  padding: 0;
+  flex: 0 0 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.phase {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: #fbfcfd;
+}
+
+.phase h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.phase-actions {
+  margin-bottom: 8px;
+}
+
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 9px 13px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn.primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn.secondary {
+  background: #fff;
+  border-color: var(--line);
+}
+
+.btn.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.result-box {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  background: #fff;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border: 1px solid #c8d6e1;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  background: #f3f8fc;
+  color: #2d4a5f;
+}
+
+.sentence-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 10px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.sentence-option.active {
+  border-color: #537fd2;
+  background: #f2f6ff;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+  min-height: 1.3em;
+}
+
+.status {
+  color: var(--ok);
+  font-weight: 700;
+  min-height: 1.3em;
+}
+
+@media (max-width: 860px) {
+  .grid.two {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+  }
+}
