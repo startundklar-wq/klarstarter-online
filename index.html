@@ -809,8 +809,8 @@
                 <span id="meaningSummaryText">-</span>
               </div>
               <div class="summary-row">
-                <strong>10 Kernstichworte</strong><br>
-                <span id="coreKeywordsText">-</span>
+                <strong>10 Sinnzusammenhaenge</strong><br>
+                <span id="coreKeywordsText" style="white-space:pre-line">-</span>
               </div>
               <div class="summary-row">
                 <strong>Moegliche Deutungen</strong><br>
@@ -2488,12 +2488,35 @@
       return PHASES.every((phase) => state.phases[phase.id].mainDone);
     }
 
+    function saveMainQuestion() {
+      const store = currentPhaseStore();
+      store.mainDone = true;
+      const raw = `${store.transcript || ""}\n${store.notes || ""}`;
+      if (detectTherapeuticRedAlert(raw)) {
+        state.redAlert = true;
+        store.keywords = ["RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT"];
+        document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
+        return false;
+      }
+      if (!store.keywords || store.keywords.length === 0) {
+        const phase = currentPhase();
+        store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
+      }
+      return true;
+    }
+
     async function goToNextPhase() {
       syncContextInputsToStore();
       const phaseStore = currentPhaseStore();
       if (!phaseStore.mainDone) {
-        document.getElementById("sessionState").textContent = "Bitte zuerst Hauptfrage als erledigt markieren.";
-        return;
+        if (state.activeModuleId) {
+          document.getElementById("sessionState").textContent = "Bitte zuerst die Hauptfrage speichern oder das Modul abschliessen.";
+          return;
+        }
+        if (!saveMainQuestion()) {
+          render();
+          return;
+        }
       }
       if (state.activePhaseIndex < PHASES.length - 1) {
         state.activePhaseIndex += 1;
@@ -2510,21 +2533,9 @@
     function markCurrentDone() {
       syncContextInputsToStore();
       if (!state.activeModuleId) {
-        const store = currentPhaseStore();
-        store.mainDone = true;
-        const raw = `${store.transcript || ""}\n${store.notes || ""}`;
-        if (detectTherapeuticRedAlert(raw)) {
-          state.redAlert = true;
-          store.keywords = ["RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT"];
-          document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
-          render();
-          return;
+        if (saveMainQuestion()) {
+          document.getElementById("sessionState").textContent = `Hauptfrage ${currentPhase().id} gespeichert.`;
         }
-        if (!store.keywords || store.keywords.length === 0) {
-          const phase = currentPhase();
-          store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
-        }
-        document.getElementById("sessionState").textContent = `Hauptfrage ${currentPhase().id} gespeichert.`;
       } else {
         const moduleDef = currentPhase().modules.find((mod) => mod.id === state.activeModuleId);
         const moduleStore = currentPhaseStore().modules[state.activeModuleId];
@@ -2649,7 +2660,8 @@
       if (analysis.empfohlene_vertiefungsfrage) state.empfehlteVertiefungsfrage = String(analysis.empfohlene_vertiefungsfrage).trim();
       if (analysis.meaning_summary) state.meaningSummary = String(analysis.meaning_summary).trim();
       if (Array.isArray(analysis.sinn_hypothesen)) state.meaningHypotheses = uniqueTerms(analysis.sinn_hypothesen).slice(0, 4);
-      if (Array.isArray(analysis.kernstichworte_10)) state.coreKeywords = uniqueTerms(analysis.kernstichworte_10).filter((term) => keywordQuality(term)).slice(0, 10);
+      const cloudSenseConnections = analysis.sinnzusammenhaenge_10 || analysis.kernstichworte_10 || [];
+      if (Array.isArray(cloudSenseConnections)) state.coreKeywords = uniqueTerms(cloudSenseConnections).slice(0, 10);
       if (!state.coreKeywords || state.coreKeywords.length === 0) buildCoreKeywords();
       state.redAlert = Boolean(state.redAlert || analysis.red_alert);
       state.lastAnalysisSource = "cloud";
@@ -2814,51 +2826,37 @@
 
     function buildCoreKeywords() {
       const answers = collectMainAnswersForAi();
-      const weighted = new Map();
-
-      function add(term, score) {
-        const label = displayKeywordLabel(term);
-        if (!keywordQuality(label)) return;
-        const key = semanticKey(label) || normalizeText(label);
-        if (!key) return;
-        const existing = weighted.get(key);
-        if (existing) {
-          existing.score += score;
-          if (score > existing.bestScore && label.length >= existing.label.length) {
-            existing.label = label;
-            existing.bestScore = score;
-          }
-          return;
-        }
-        weighted.set(key, { label, score, bestScore: score });
-      }
-
-      PHASES.forEach((phase) => {
-        const raw = answers[phase.id] || "";
-        inferSemanticKeywords(raw, phase.id).forEach((term, index) => add(term, 60 - index * 2));
-        extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id }).forEach((term, index) => add(term, 35 - index));
-        keywordBundleForPhase(phase.id).forEach((term, index) => add(term, 24 - Math.min(index, 12)));
-      });
-
-      computeOverlaps().forEach((item, index) => {
-        add(item.label, 28 + item.phaseCount * 6 - index);
-      });
-
-      const allAnswers = Object.values(answers).join("\n");
-      const broadLexicon = [
-        ...STRENGTH_WORDS,
-        ...flattenValues(THEME_GROUPS),
-        ...flattenValues(NEED_GROUPS),
-        ...flattenValues(CONTRIBUTION_GROUPS),
-        ...ROLE_WORDS,
-        ...TARGET_GROUPS
+      const s = pickTerms(keywordBundleForPhase("S"), 3, "deine Staerken");
+      const t = pickTerms(keywordBundleForPhase("T"), 3, "deine Interessen");
+      const a = pickTerms(keywordBundleForPhase("A"), 3, "tragende Bedingungen");
+      const r = pickTerms(keywordBundleForPhase("R"), 3, "deinen Beitrag");
+      const overlaps = computeOverlaps().slice(0, 4).map((item) => displayKeywordLabel(item.label));
+      const semanticS = inferSemanticKeywords(answers.S || "", "S").map((item) => displayKeywordLabel(item));
+      const semanticT = inferSemanticKeywords(answers.T || "", "T").map((item) => displayKeywordLabel(item));
+      const semanticR = inferSemanticKeywords(answers.R || "", "R").map((item) => displayKeywordLabel(item));
+      const sLine = joinNatural(s);
+      const tLine = joinNatural(t);
+      const aLine = joinNatural(a);
+      const rLine = joinNatural(r);
+      const candidates = [
+        `Eine moegliche Spur verbindet ${sLine} mit dem Beitrag ${rLine}.`,
+        `Lebendigkeit zeigt sich dort, wo ${tLine} und ${sLine} zusammenkommen.`,
+        `Die Spur bleibt tragfaehig, wenn ${aLine} bewusst Platz bekommen.`,
+        `Der Beitrag richtet sich darauf, ${rLine} fuer andere oder ein Umfeld moeglich zu machen.`,
+        overlaps.length ? `Wiederkehrend verbinden sich ${joinNatural(overlaps)} ueber mehrere Antworten hinweg.` : "",
+        semanticS.length ? `Die Staerke hinter dem Gesagten wirkt wie ${joinNatural(semanticS.slice(0, 3))}.` : "",
+        semanticT.length ? `Das Interesse bekommt Energie, wenn ${joinNatural(semanticT.slice(0, 3))} konkret erlebbar wird.` : "",
+        semanticR.length ? `Die Wirksamkeit richtet sich auf ${joinNatural(semanticR.slice(0, 3))}.` : "",
+        `Ein guter Praxistest waere eine kleine Situation, in der ${s[0]} genutzt wird, um ${r[0]} sichtbar zu pruefen.`,
+        `Die wichtigste Balance liegt zwischen ${t[0]} als Energiequelle und ${a[0]} als tragender Bedingung.`,
+        `Eine moegliche Berufs- oder Projektrichtung sollte ${s[0]}, ${t[0]}, ${a[0]} und ${r[0]} gleichzeitig ernst nehmen.`,
+        `Wenn diese Spur passt, sollte sie sowohl innere Lebendigkeit als auch konkrete Orientierung nach aussen erzeugen.`
       ];
-      extractKeywords(allAnswers, broadLexicon, { phaseId: "" }).forEach((term, index) => add(term, 18 - index));
 
-      const result = Array.from(weighted.values())
-        .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
-        .map((entry) => entry.label)
-        .filter((term, index, arr) => arr.findIndex((item) => normalizeText(item) === normalizeText(term)) === index)
+      const result = candidates
+        .map((item) => String(item || "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .filter((item, index, arr) => arr.findIndex((entry) => normalizeText(entry) === normalizeText(item)) === index)
         .slice(0, 10);
 
       state.coreKeywords = result;
@@ -3108,7 +3106,7 @@
       lines.push(state.risikoAnalyse || "-");
       lines.push("Sinnverdichtung:");
       lines.push(state.meaningSummary || "-");
-      lines.push("10 Kernstichworte:");
+      lines.push("10 Sinnzusammenhaenge:");
       (state.coreKeywords && state.coreKeywords.length ? state.coreKeywords : buildCoreKeywords()).forEach((item) => lines.push(item));
       lines.push("Moegliche Deutungen:");
       (state.meaningHypotheses && state.meaningHypotheses.length ? state.meaningHypotheses : ["-"]).forEach((item) => lines.push(item));
@@ -3200,7 +3198,7 @@
       document.getElementById("meaningSummaryText").textContent = state.meaningSummary || "-";
       if (!state.coreKeywords || state.coreKeywords.length === 0) buildCoreKeywords();
       document.getElementById("coreKeywordsText").textContent = state.coreKeywords && state.coreKeywords.length
-        ? state.coreKeywords.join(", ")
+        ? state.coreKeywords.map((item, index) => `${index + 1}. ${item}`).join("\n")
         : "-";
       document.getElementById("meaningHypothesesText").textContent = state.meaningHypotheses && state.meaningHypotheses.length
         ? state.meaningHypotheses.join(" | ")
@@ -3331,11 +3329,16 @@
       render();
     });
 
-    document.getElementById("deepenNoBtn").addEventListener("click", () => {
-      currentPhaseStore().deepenAsked = true;
+    document.getElementById("deepenNoBtn").addEventListener("click", async () => {
+      syncContextInputsToStore();
       state.activeModuleId = null;
-      document.getElementById("sessionState").textContent = "Ohne Vertiefung weiter.";
-      render();
+      currentPhaseStore().deepenAsked = true;
+      if (!currentPhaseStore().mainDone && !saveMainQuestion()) {
+        render();
+        return;
+      }
+      document.getElementById("sessionState").textContent = "Ohne Vertiefung gespeichert. Weiter zur naechsten Hauptfrage.";
+      await goToNextPhase();
     });
 
     document.getElementById("nextPhaseBtn").addEventListener("click", async () => {
