@@ -584,20 +584,6 @@
                 </select>
               </div>
             </div>
-            <div class="form-grid" style="margin-top:10px">
-              <div class="field">
-                <label for="aiProviderSelect">KI-Anbieter</label>
-                <select id="aiProviderSelect">
-                  <option value="openai">ChatGPT (OpenAI)</option>
-                  <option value="gemini">Gemini (Google)</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="aiModelInput">Modell (optional)</label>
-                <input id="aiModelInput" placeholder="z. B. gpt-5.2 oder gemini-2.0-flash">
-              </div>
-            </div>
-            <p class="small-note">Bei der Online-Version werden die STAR-Antworten fuer die Strukturierung an den gewaehlten KI-Dienst gesendet.</p>
             <p class="small-note" id="ageAudioHint">Audio gemaess Alterskategorie verfuegbar.</p>
           </section>
 
@@ -629,7 +615,7 @@
                   </ul>
                   <p><strong>Zweck:</strong> Durchfuehrung des Coachinggespraechs, Verdichtung zentraler Aussagen und Erstellung einer Ergebniszusammenfassung fuer den Kunden.</p>
                   <p><strong>Rechtsgrundlage:</strong> Einwilligung der betroffenen Person vor Start des Prozesses (Datenschutz + Ethikkodex + Unterschrift).</p>
-                  <p><strong>Speicherort:</strong> Lokale Nutzung ist moeglich. In der Online-Version kann fuer die KI-Auswertung eine Uebermittlung der STAR-Antworten an den gewaehlten KI-Dienst erfolgen (ChatGPT oder Gemini).</p>
+                  <p><strong>Speicherort:</strong> Die App ist fuer lokale Nutzung ausgelegt (Browser/localhost). Eine automatische Uebermittlung an externe Server ist in diesem Stand nicht vorgesehen.</p>
                   <p><strong>Loeschkonzept:</strong> Nach PDF-Erstellung oder manuellem Reset werden Sitzungsdaten in der App geloescht. Wenn ein Browser oder Geraet technisch zwischenspeichert, ist zusaetzlich ein lokales Browser-Reset zu empfehlen.</p>
                   <p><strong>Weitergabe:</strong> Keine Weitergabe an Dritte ohne separate, informierte Einwilligung.</p>
                   <p><strong>Betroffenenrechte:</strong> Auskunft, Berichtigung, Loeschung, Einschraenkung, Widerspruch und Widerruf einer erteilten Einwilligung fuer zukuenftige Verarbeitungen.</p>
@@ -789,7 +775,6 @@
             <h2>Klarstarter Satz</h2>
             <p class="small-note">Der Satz verdichtet Staerken, Interessen, Beitrag und Bedingungen.</p>
             <p class="small-note">Mehrere Varianten mit Ueberschneidungen werden vorgeschlagen. Eine Variante kann direkt uebernommen werden.</p>
-            <p class="small-note" id="analysisSourceLine">Analysequelle: lokal</p>
             <div class="summary-grid" style="margin-bottom:10px">
               <div class="summary-row">
                 <strong>Lueckenanalyse</strong><br>
@@ -1024,11 +1009,6 @@
       "ich halte das nicht mehr aus", "fremdgefaehrdung"
     ];
 
-    const AI_DEFAULT_MODELS = {
-      openai: "gpt-5.2",
-      gemini: "gemini-2.0-flash"
-    };
-
     function flattenValues(objectMap) {
       return Object.keys(objectMap).reduce((acc, key) => acc.concat(objectMap[key]), []);
     }
@@ -1165,8 +1145,6 @@
       language: "de-CH",
       ageCategory: "16_17",
       flowVariant: "quick",
-      aiProvider: "openai",
-      aiModel: AI_DEFAULT_MODELS.openai,
       names: { client: "", coach: "" },
       signature: "",
       consent: {
@@ -1195,7 +1173,6 @@
       lueckenAnalyse: "",
       risikoAnalyse: "",
       empfehlteVertiefungsfrage: "",
-      lastAnalysisSource: "lokal",
       redAlert: false
     };
 
@@ -1500,11 +1477,6 @@
     function readIntroForm() {
       state.ageCategory = document.getElementById("ageCategorySelect").value;
       state.flowVariant = document.getElementById("flowVariantSelect").value;
-      state.aiProvider = document.getElementById("aiProviderSelect").value;
-      {
-        const modelInput = document.getElementById("aiModelInput").value.trim();
-        state.aiModel = modelInput || AI_DEFAULT_MODELS[state.aiProvider];
-      }
       state.names.client = document.getElementById("clientNameInput").value.trim();
       state.names.coach = document.getElementById("coachNameInput").value.trim();
       state.signature = document.getElementById("signatureInput").value.trim();
@@ -1541,8 +1513,6 @@
 
       document.getElementById("ageCategorySelect").value = state.ageCategory;
       document.getElementById("flowVariantSelect").value = state.flowVariant;
-      document.getElementById("aiProviderSelect").value = state.aiProvider;
-      document.getElementById("aiModelInput").value = state.aiModel || AI_DEFAULT_MODELS[state.aiProvider];
       document.getElementById("clientNameInput").value = state.names.client;
       document.getElementById("coachNameInput").value = state.names.coach;
       document.getElementById("signatureInput").value = state.signature;
@@ -2171,67 +2141,6 @@
       });
     }
 
-    function blobToDataUrl(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("blob-read-failed"));
-        reader.readAsDataURL(blob);
-      });
-    }
-
-    function languageForTranscription() {
-      if ((state.language || "").toLowerCase().startsWith("de")) return "de";
-      return "";
-    }
-
-    function applyTranscriptToUi(target) {
-      if (!target) return;
-      const transcriptEl = document.getElementById("transcriptInput");
-      if (!transcriptEl) return;
-      const context = activeContextStore();
-      if (context && context.target === target) {
-        transcriptEl.value = target.transcript || "";
-      }
-    }
-
-    async function transcribeBlobViaApi(blob, target, speakerLabel = "") {
-      if (!blob || !target) return false;
-      try {
-        const audioBase64 = await blobToDataUrl(blob);
-        const response = await fetch("/api/transcribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            audioBase64,
-            mimeType: blob.type || "audio/webm",
-            language: languageForTranscription()
-          })
-        });
-        const result = await response.json();
-        if (!response.ok || !result.ok) return false;
-        const spoken = String(result.text || "").trim();
-        if (!spoken) return false;
-        const prefix = speakerLabel ? `[${speakerLabel}] ` : "";
-        target.transcript = `${target.transcript ? `${target.transcript}\n` : ""}${prefix}${spoken}`;
-        applyTranscriptToUi(target);
-        state.micStatus = "Mikrofon gestoppt. Audio wurde transkribiert.";
-        render();
-        return true;
-      } catch (error) {
-        return false;
-      }
-    }
-
-    function describeMicError(error) {
-      const name = error && error.name ? error.name : "";
-      if (name === "NotAllowedError") return "Mikrofon blockiert. Bitte Browser-Berechtigung fuer Mikrofon erlauben.";
-      if (name === "NotFoundError") return "Kein Mikrofon gefunden. Bitte Geraet pruefen.";
-      if (name === "NotReadableError") return "Mikrofon wird bereits von einer anderen App genutzt.";
-      if (name === "SecurityError") return "Mikrofonzugriff aus Sicherheitsgruenden blockiert.";
-      return "Mikrofon konnte nicht gestartet werden.";
-    }
-
     async function startMic(target) {
       if (state.micRunning) return;
       if (!audioAllowedByAge()) {
@@ -2296,18 +2205,14 @@
           rec.onerror = () => {};
           micRuntime.recognition = rec;
           rec.start();
-        } else {
-          state.micStatus = "Mikrofon laeuft ohne Live-Transkript. Beim Stop wird Server-Transkription versucht.";
         }
 
         state.micRunning = true;
-        if (SpeechApi) {
-          state.micStatus = "Mikrofon laeuft.";
-        }
+        state.micStatus = "Mikrofon laeuft.";
         render();
       } catch (error) {
         state.micRunning = false;
-        state.micStatus = describeMicError(error);
+        state.micStatus = "Mikrofon konnte nicht gestartet werden.";
         render();
       }
     }
@@ -2317,28 +2222,14 @@
       state.micRunning = false;
       state.sampleRecordingKind = null;
       state.micStatus = "Mikrofon gestoppt.";
-      const targetRef = micRuntime.target;
-      const speechAvailable = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-      const speakerLabel = state.mode === "coach" ? state.activeSpeaker : "";
       if (micRuntime.recognition) {
         try { micRuntime.recognition.stop(); } catch (error) {}
       }
       if (micRuntime.recorder) {
-        micRuntime.recorder.onstop = async () => {
+        micRuntime.recorder.onstop = () => {
           const blob = micRuntime.chunks.length > 0 ? new Blob(micRuntime.chunks, { type: micRuntime.chunks[0].type || "audio/webm" }) : null;
           if (saveBlobTarget && blob) saveBlobTarget.blob = blob;
           micRuntime.chunks = [];
-          if (!blob || !targetRef) return;
-          const transcriptEmpty = !String(targetRef.transcript || "").trim();
-          const shouldTranscribe = !speechAvailable || transcriptEmpty;
-          if (!shouldTranscribe) return;
-          state.micStatus = "Audio wird transkribiert ...";
-          render();
-          const ok = await transcribeBlobViaApi(blob, targetRef, speakerLabel);
-          if (!ok && !speechAvailable) {
-            state.micStatus = "Keine Live-Spracherkennung im Browser und Server-Transkription nicht verfuegbar.";
-            render();
-          }
         };
         try { micRuntime.recorder.stop(); } catch (error) {}
       }
@@ -2414,7 +2305,7 @@
       return PHASES.every((phase) => state.phases[phase.id].mainDone);
     }
 
-    async function goToNextPhase() {
+    function goToNextPhase() {
       syncContextInputsToStore();
       const phaseStore = currentPhaseStore();
       if (!phaseStore.mainDone) {
@@ -2429,7 +2320,7 @@
         render();
         return;
       }
-      await prepareSummaryWithCloudFallback("sessionState");
+      buildSentence();
       setView("summary");
     }
 
@@ -2457,122 +2348,6 @@
         markModuleDone(moduleDef, moduleStore);
       }
       render();
-    }
-
-    function uniqueTerms(values) {
-      const list = Array.isArray(values) ? values : [];
-      return list
-        .map((item) => String(item || "").trim())
-        .filter(Boolean)
-        .filter((item, index, arr) => arr.findIndex((x) => normalizeText(x) === normalizeText(item)) === index);
-    }
-
-    function collectMainAnswersForAi() {
-      const phaseText = (phaseId) => {
-        const phaseStore = state.phases[phaseId];
-        const main = [phaseStore.transcript, phaseStore.notes].filter(Boolean).join("\n");
-        const modules = Object.values(phaseStore.modules || {})
-          .map((module) => {
-            const selected = Array.isArray(module.selected) ? module.selected.join(" ") : "";
-            return [module.transcript, module.notes, module.customText, selected].filter(Boolean).join(" ");
-          })
-          .filter(Boolean)
-          .join("\n");
-        return [main, modules].filter(Boolean).join("\n").trim();
-      };
-
-      return {
-        S: phaseText("S"),
-        T: phaseText("T"),
-        A: phaseText("A"),
-        R: phaseText("R")
-      };
-    }
-
-    function applyCloudAnalysis(analysis) {
-      const clusters = (analysis && analysis.clusters) || {};
-      const phaseClusterMap = {
-        S: clusters.koennen || [],
-        T: clusters.lebendigkeit || [],
-        A: clusters.resonanz_beduerfnisse || [],
-        R: clusters.beitrag_wirksamkeit || []
-      };
-
-      Object.entries(phaseClusterMap).forEach(([phaseId, terms]) => {
-        const phaseStore = state.phases[phaseId];
-        const merged = uniqueTerms([...(Array.isArray(terms) ? terms : []), ...(phaseStore.keywords || [])]);
-        phaseStore.keywords = merged.slice(0, 12);
-      });
-
-      const aiOptions = uniqueTerms(analysis.klarstarter_satz_entwuerfe || []).slice(0, 4);
-      if (aiOptions.length > 0) {
-        state.sentenceOptions = aiOptions;
-        state.selectedSentenceOption = 0;
-        state.sentence = aiOptions[0];
-        state.sentenceApproved = false;
-      }
-
-      if (analysis.luecken_analyse) {
-        state.lueckenAnalyse = String(analysis.luecken_analyse).trim();
-      }
-      if (analysis.empfohlene_vertiefungsfrage) {
-        state.empfehlteVertiefungsfrage = String(analysis.empfohlene_vertiefungsfrage).trim();
-      }
-      state.redAlert = Boolean(state.redAlert || analysis.red_alert);
-      state.lastAnalysisSource = "cloud";
-    }
-
-    async function runCloudAnalysis() {
-      const answers = collectMainAnswersForAi();
-      const payload = {
-        sessionId: state.sessionId || createSessionId(),
-        provider: state.aiProvider,
-        model: state.aiModel || AI_DEFAULT_MODELS[state.aiProvider],
-        ageCategory: state.ageCategory,
-        flowVariant: state.flowVariant,
-        aliases: {
-          client: state.names.client,
-          coach: state.mode === "coach" ? state.names.coach : ""
-        },
-        consent: state.consent,
-        answers
-      };
-
-      const response = await fetch("/api/coach", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok || !result.analysis) {
-        throw new Error(result?.error || "Cloud-Analyse nicht verfuegbar.");
-      }
-      applyCloudAnalysis(result.analysis);
-      return true;
-    }
-
-    async function prepareSummaryWithCloudFallback(statusNodeId = "sessionState") {
-      const statusNode = document.getElementById(statusNodeId);
-      try {
-        statusNode.textContent = "KI-Auswertung laeuft ...";
-        await runCloudAnalysis();
-
-        // Risikoanalyse weiterhin lokal aus den finalen Clustern berechnen.
-        const aiGap = state.lueckenAnalyse;
-        const aiQuestion = state.empfehlteVertiefungsfrage;
-        buildGapAndRiskAnalysis();
-        if (aiGap) state.lueckenAnalyse = aiGap;
-        if (aiQuestion) state.empfehlteVertiefungsfrage = aiQuestion;
-
-        if (!state.sentence || !state.sentenceOptions || state.sentenceOptions.length === 0) {
-          buildSentence();
-        }
-        statusNode.textContent = "KI-Auswertung von " + (state.aiProvider === "gemini" ? "Gemini" : "ChatGPT") + " abgeschlossen.";
-      } catch (error) {
-        state.lastAnalysisSource = "lokal";
-        buildSentence();
-        statusNode.textContent = "Cloud-KI nicht erreichbar. Lokale Auswertung wurde verwendet.";
-      }
     }
 
     function keywordBundleForPhase(phaseId) {
@@ -2756,7 +2531,6 @@
       state.selectedSentenceOption = 0;
       state.sentence = options[0] || "Es ist eine erste Spur entstanden. Bitte ergaenze den Merksatz.";
       state.sentenceApproved = false;
-      state.lastAnalysisSource = "lokal";
     }
 
     function escapePdfText(text) {
@@ -2841,9 +2615,6 @@
         `Coach Alias: ${state.mode === "coach" ? (state.names.coach || "-") : "solo"}`,
         `Alterskategorie: ${state.ageCategory}`,
         `Modus: ${state.flowVariant}`,
-        `KI-Anbieter: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT (OpenAI)"}`,
-        `KI-Modell: ${state.aiModel || "-"}`,
-        `Auswertungsquelle: ${state.lastAnalysisSource === "cloud" ? "Cloud-KI" : "lokale Analyse"}`,
         `KI-Hinweis: KI-Strukturierung, keine automatisierte Einzelfallentscheidung.`,
         lineBreak
       ];
@@ -2902,7 +2673,6 @@
       state.lueckenAnalyse = "";
       state.risikoAnalyse = "";
       state.empfehlteVertiefungsfrage = "";
-      state.lastAnalysisSource = "lokal";
       state.redAlert = false;
       state.sessionId = "";
       if (!keepMessage) document.getElementById("summaryState").textContent = "";
@@ -2940,9 +2710,6 @@
       document.getElementById("gapAnalysisText").textContent = state.lueckenAnalyse || "-";
       document.getElementById("recommendedQuestionText").textContent = state.empfehlteVertiefungsfrage || "-";
       document.getElementById("riskAnalysisText").textContent = state.risikoAnalyse || "-";
-      document.getElementById("analysisSourceLine").textContent = state.lastAnalysisSource === "cloud"
-        ? `Analysequelle: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT"} (${state.aiModel || "-"})`
-        : "Analysequelle: lokal";
 
       const optionsWrap = document.getElementById("sentenceOptions");
       optionsWrap.innerHTML = "";
@@ -3076,13 +2843,13 @@
       render();
     });
 
-    document.getElementById("nextPhaseBtn").addEventListener("click", async () => {
+    document.getElementById("nextPhaseBtn").addEventListener("click", () => {
       if (state.activePhaseIndex === PHASES.length - 1 && currentPhaseStore().mainDone) {
-        await prepareSummaryWithCloudFallback("sessionState");
+        buildSentence();
         setView("summary");
         return;
       }
-      await goToNextPhase();
+      goToNextPhase();
     });
 
     document.getElementById("transcriptInput").addEventListener("input", () => {
@@ -3092,12 +2859,10 @@
       syncContextInputsToStore();
     });
 
-    document.getElementById("regenerateSentenceBtn").addEventListener("click", async () => {
-      await prepareSummaryWithCloudFallback("summaryState");
+    document.getElementById("regenerateSentenceBtn").addEventListener("click", () => {
+      buildSentence();
       renderSummary();
-      if (state.lastAnalysisSource === "lokal") {
-        document.getElementById("summaryState").textContent = "Satz lokal neu formuliert.";
-      }
+      document.getElementById("summaryState").textContent = "Satz neu formuliert.";
     });
 
     document.getElementById("approveSentenceBtn").addEventListener("click", () => {
@@ -3131,21 +2896,6 @@
 
     document.getElementById("flowVariantSelect").addEventListener("change", (event) => {
       state.flowVariant = event.target.value;
-    });
-
-    document.getElementById("aiProviderSelect").addEventListener("change", (event) => {
-      const previousProvider = state.aiProvider;
-      const previousDefault = AI_DEFAULT_MODELS[previousProvider] || "";
-      const currentModel = (state.aiModel || "").trim();
-      state.aiProvider = event.target.value;
-      if (!currentModel || currentModel === previousDefault) {
-        state.aiModel = AI_DEFAULT_MODELS[state.aiProvider];
-      }
-      renderIntro();
-    });
-
-    document.getElementById("aiModelInput").addEventListener("input", (event) => {
-      state.aiModel = event.target.value.trim();
     });
 
     document.getElementById("emergencyDeleteBtn").addEventListener("click", () => {
