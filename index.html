@@ -584,6 +584,20 @@
                 </select>
               </div>
             </div>
+            <div class="form-grid" style="margin-top:10px">
+              <div class="field">
+                <label for="aiProviderSelect">KI-Anbieter</label>
+                <select id="aiProviderSelect">
+                  <option value="openai">ChatGPT (OpenAI)</option>
+                  <option value="gemini">Gemini (Google)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="aiModelInput">Modell (optional)</label>
+                <input id="aiModelInput" placeholder="z. B. gpt-5.2 oder gemini-2.0-flash">
+              </div>
+            </div>
+            <p class="small-note">In der Online-Version werden die STAR-Antworten fuer die Strukturierung an den gewaehlten KI-Dienst gesendet.</p>
             <p class="small-note" id="ageAudioHint">Audio gemaess Alterskategorie verfuegbar.</p>
           </section>
 
@@ -615,7 +629,7 @@
                   </ul>
                   <p><strong>Zweck:</strong> Durchfuehrung des Coachinggespraechs, Verdichtung zentraler Aussagen und Erstellung einer Ergebniszusammenfassung fuer den Kunden.</p>
                   <p><strong>Rechtsgrundlage:</strong> Einwilligung der betroffenen Person vor Start des Prozesses (Datenschutz + Ethikkodex + Unterschrift).</p>
-                  <p><strong>Speicherort:</strong> Die App ist fuer lokale Nutzung ausgelegt (Browser/localhost). Eine automatische Uebermittlung an externe Server ist in diesem Stand nicht vorgesehen.</p>
+                  <p><strong>Speicherort:</strong> Lokale Nutzung ist moeglich. In der Online-Version kann fuer die KI-Auswertung eine Uebermittlung der STAR-Antworten an den gewaehlten KI-Dienst erfolgen (ChatGPT oder Gemini).</p>
                   <p><strong>Loeschkonzept:</strong> Nach PDF-Erstellung oder manuellem Reset werden Sitzungsdaten in der App geloescht. Wenn ein Browser oder Geraet technisch zwischenspeichert, ist zusaetzlich ein lokales Browser-Reset zu empfehlen.</p>
                   <p><strong>Weitergabe:</strong> Keine Weitergabe an Dritte ohne separate, informierte Einwilligung.</p>
                   <p><strong>Betroffenenrechte:</strong> Auskunft, Berichtigung, Loeschung, Einschraenkung, Widerspruch und Widerruf einer erteilten Einwilligung fuer zukuenftige Verarbeitungen.</p>
@@ -775,6 +789,8 @@
             <h2>Klarstarter Satz</h2>
             <p class="small-note">Der Satz verdichtet Staerken, Interessen, Beitrag und Bedingungen.</p>
             <p class="small-note">Mehrere Varianten mit Ueberschneidungen werden vorgeschlagen. Eine Variante kann direkt uebernommen werden.</p>
+            <p class="small-note" id="analysisSourceLine">Analysequelle: lokal</p>
+            <p class="error" id="localAnalysisWarning"></p>
             <div class="summary-grid" style="margin-bottom:10px">
               <div class="summary-row">
                 <strong>Lueckenanalyse</strong><br>
@@ -787,6 +803,18 @@
               <div class="summary-row">
                 <strong>Risikoanalyse (Zweifach-Ueberlappung)</strong><br>
                 <span id="riskAnalysisText">-</span>
+              </div>
+              <div class="summary-row">
+                <strong>Sinnverdichtung</strong><br>
+                <span id="meaningSummaryText">-</span>
+              </div>
+              <div class="summary-row">
+                <strong>10 Kernstichworte</strong><br>
+                <span id="coreKeywordsText">-</span>
+              </div>
+              <div class="summary-row">
+                <strong>Moegliche Deutungen</strong><br>
+                <span id="meaningHypothesesText">-</span>
               </div>
             </div>
             <div class="summary-grid" id="sentenceOptions"></div>
@@ -840,6 +868,13 @@
       "chli": "klein",
       "nid": "nicht",
       "nume": "nur",
+      "chan": "kann",
+      "guet": "gut",
+      "egge": "ecke",
+      "denke": "denken",
+      "anderscht": "anders",
+      "loesig": "loesung",
+      "loesige": "loesungen",
       "gaht": "geht",
       "wemer": "wenn wir",
       "wotsch": "willst du",
@@ -854,7 +889,18 @@
       "auf", "im", "in", "am", "an", "bei", "von", "zu", "zum", "zur", "ist", "sind", "war",
       "waren", "wird", "werden", "habe", "hast", "hat", "haben", "als", "wie", "sehr",
       "schon", "noch", "mal", "mehr", "weniger", "hier", "dort", "diese", "dieser", "dieses",
-      "mein", "dein", "sein", "ihr", "euer", "nicht", "ja", "nein", "halt", "etwas", "alles"
+      "mein", "meine", "meiner", "meinem", "meinen", "dein", "deine", "deiner", "deinem",
+      "deinen", "sein", "seine", "seiner", "seinem", "seinen", "ihr", "ihre", "ihrer",
+      "ihrem", "ihren", "euer", "nicht", "ja", "nein", "halt", "etwas", "alles", "nach"
+    ]);
+
+    const LOW_VALUE_KEYWORDS = new Set([
+      "kann", "gut", "denken", "ecke", "ecken", "sagen", "machen", "gehen", "kommen",
+      "einfach", "dinge", "sachen", "irgendwie", "halt", "beispiel", "thema",
+      "antwort", "weiss", "weisss", "koennen", "menschen", "andere", "feststecken",
+      "moechte", "wirksam", "indem", "staerke", "schwierige", "lebendig", "finde",
+      "finden", "gebe", "geben", "gibt", "kreative", "vereinfache", "sehe",
+      "sehen", "arbeit", "soll"
     ]);
 
     const STRENGTH_WORDS = [
@@ -951,8 +997,11 @@
       { phases: ["S"], signals: ["zwischen den zeilen", "gut zuhoeren", "fein fuehlen", "einfuehlen"], outputs: ["zuhoeren", "begleiten"] },
       { phases: ["S"], signals: ["alles unter einen hut", "koordiniert", "ueberblick", "ordentlich"], outputs: ["organisieren", "strukturieren"] },
       { phases: ["S"], signals: ["ruhig bleiben", "kuehlen kopf", "deeskalieren", "ausgleich"], outputs: ["ruhe", "zuverlaessigkeit"] },
+      { phases: ["S", "T", "R"], signals: ["um die ecke denken", "um den ecken denken", "um e ecke denken", "ume ecke denken", "quer denken", "querdenken", "anders denken", "anderscht denken", "neue wege finden", "loesungen finden", "knobeln", "raetsel loesen", "komplizierte probleme"], outputs: ["kreative Problemloesung", "Perspektivenwechsel", "loesungsorientiert"] },
+      { phases: ["S", "R"], signals: ["schnell einen ausweg", "praktische loesung", "problem knacken", "herausforderung loesen", "wenn es schwierig wird"], outputs: ["Problemloesung", "pragmatisch", "analytisch"] },
+      { phases: ["S", "T"], signals: ["ideen verbinden", "dinge kombinieren", "zusammenhaenge sehen", "muster erkennen", "verknuepfen"], outputs: ["vernetztes Denken", "Zusammenhaenge erkennen", "Ideen verbinden"] },
 
-      { phases: ["T"], signals: ["mit menschen", "zusammenarbeit", "begleiten", "austausch"], outputs: ["menschen", "beratung"] },
+      { phases: ["T"], signals: ["menschen", "mit menschen", "zusammenarbeit", "begleiten", "austausch"], outputs: ["Menschenkontakt", "Beratung"] },
       { phases: ["T"], signals: ["natur", "wald", "draussen", "tiere"], outputs: ["natur", "tiere"] },
       { phases: ["T"], signals: ["technik", "digital", "apps", "programm"], outputs: ["technik", "programmieren"] },
       { phases: ["T"], signals: ["kreativ", "gestalten", "musik", "ideen"], outputs: ["kreativitaet", "gestaltung"] },
@@ -979,10 +1028,11 @@
       { phrases: ["viele koeche verderben den brei"], phases: ["S", "R"], outputs: ["koordination", "klarheit"] },
       { phrases: ["am gleichen strang ziehen"], phases: ["S", "A", "R"], outputs: ["team", "zusammenarbeit"] },
       { phrases: ["den kopf in den sand stecken"], phases: ["A"], outputs: ["sicherheit", "klaerung"] },
-      { phrases: ["ueber den tellerrand schauen"], phases: ["T", "R"], outputs: ["offenheit", "entwicklung"] },
+      { phrases: ["ueber den tellerrand schauen"], phases: ["S", "T", "R"], outputs: ["Perspektivenwechsel", "offenheit", "entwicklung"] },
       { phrases: ["den nagel auf den kopf treffen"], phases: ["R"], outputs: ["klarheit", "praezision"] },
       { phrases: ["auf eigenen beinen stehen"], phases: ["A"], outputs: ["selbststaendigkeit", "sicherheit"] },
-      { phrases: ["mit herzblut"], phases: ["T", "R"], outputs: ["sinn", "engagement"] }
+      { phrases: ["mit herzblut"], phases: ["T", "R"], outputs: ["sinn", "engagement"] },
+      { phrases: ["um die ecke denken", "um den ecken denken", "um e ecke denken", "ume ecke denken"], phases: ["S", "T", "R"], outputs: ["kreative Problemloesung", "Perspektivenwechsel", "loesungsorientiert"] }
     ];
 
     const NEED_TAG_DEFINITIONS = {
@@ -1008,6 +1058,11 @@
       "ritzen", "selbstverletzung", "panikattacke", "trauma", "missbrauch",
       "ich halte das nicht mehr aus", "fremdgefaehrdung"
     ];
+
+    const AI_DEFAULT_MODELS = {
+      openai: "gpt-5.2",
+      gemini: "gemini-2.0-flash"
+    };
 
     function flattenValues(objectMap) {
       return Object.keys(objectMap).reduce((acc, key) => acc.concat(objectMap[key]), []);
@@ -1145,6 +1200,8 @@
       language: "de-CH",
       ageCategory: "16_17",
       flowVariant: "quick",
+      aiProvider: "openai",
+      aiModel: AI_DEFAULT_MODELS.openai,
       names: { client: "", coach: "" },
       signature: "",
       consent: {
@@ -1173,6 +1230,11 @@
       lueckenAnalyse: "",
       risikoAnalyse: "",
       empfehlteVertiefungsfrage: "",
+      meaningSummary: "",
+      meaningHypotheses: [],
+      coreKeywords: [],
+      lastAnalysisSource: "lokal",
+      lastCloudError: "",
       redAlert: false
     };
 
@@ -1218,6 +1280,17 @@
         .trim();
     }
 
+    function keywordQuality(term) {
+      const normalized = normalizePhrase(term);
+      if (!normalized) return false;
+      const parts = normalized.split(" ").filter(Boolean);
+      if (parts.length === 0) return false;
+      if (parts.length === 1 && LOW_VALUE_KEYWORDS.has(parts[0])) return false;
+      if (parts.every((part) => STOPWORDS.has(part) || LOW_VALUE_KEYWORDS.has(part))) return false;
+      if (parts.length === 1 && parts[0].length < 4 && !["mut", "ruhe", "sinn"].includes(parts[0])) return false;
+      return true;
+    }
+
     function stemToken(token) {
       if (!token) return "";
       let stem = token;
@@ -1255,11 +1328,18 @@
             const signalStem = stemToken(signalTokens[0]);
             return stems.has(signalStem);
           }
-          const hits = signalTokens.reduce((sum, token) => {
+          const meaningfulSignalTokens = signalTokens.filter((token) => (
+            !STOPWORDS.has(token) &&
+            !LOW_VALUE_KEYWORDS.has(token) &&
+            token.length > 2
+          ));
+          if (meaningfulSignalTokens.length === 0) return false;
+          if (signalTokens.length > 1 && meaningfulSignalTokens.length < 2) return false;
+          const hits = meaningfulSignalTokens.reduce((sum, token) => {
             const tokenStem = stemToken(token);
             return sum + (stems.has(tokenStem) ? 1 : 0);
           }, 0);
-          return hits >= Math.max(1, Math.floor(signalTokens.length * 0.7));
+          return hits >= Math.max(1, Math.ceil(meaningfulSignalTokens.length * 0.7));
         });
         if (hit) {
           concept.outputs.forEach((output) => semantic.push(output));
@@ -1319,6 +1399,7 @@
       const freeWords = Object.entries(tokenCount)
         .sort((a, b) => b[1] - a[1])
         .map(([token]) => token)
+        .filter((token) => keywordQuality(token))
         .slice(0, 12);
 
       const rankedLexicon = scoredLexicon
@@ -1327,7 +1408,8 @@
 
       const semanticTerms = inferSemanticKeywords(rawText, phaseId);
 
-      const merged = [...rankedLexicon, ...semanticTerms, ...freeWords]
+      const merged = [...semanticTerms, ...rankedLexicon, ...freeWords]
+        .filter((term) => keywordQuality(term))
         .filter((term, index, arr) => arr.findIndex((item) => normalizeText(item) === normalizeText(term)) === index)
         .slice(0, 10);
 
@@ -1477,6 +1559,8 @@
     function readIntroForm() {
       state.ageCategory = document.getElementById("ageCategorySelect").value;
       state.flowVariant = document.getElementById("flowVariantSelect").value;
+      state.aiProvider = document.getElementById("aiProviderSelect").value;
+      state.aiModel = document.getElementById("aiModelInput").value.trim() || AI_DEFAULT_MODELS[state.aiProvider];
       state.names.client = document.getElementById("clientNameInput").value.trim();
       state.names.coach = document.getElementById("coachNameInput").value.trim();
       state.signature = document.getElementById("signatureInput").value.trim();
@@ -1513,6 +1597,8 @@
 
       document.getElementById("ageCategorySelect").value = state.ageCategory;
       document.getElementById("flowVariantSelect").value = state.flowVariant;
+      document.getElementById("aiProviderSelect").value = state.aiProvider;
+      document.getElementById("aiModelInput").value = state.aiModel || AI_DEFAULT_MODELS[state.aiProvider];
       document.getElementById("clientNameInput").value = state.names.client;
       document.getElementById("coachNameInput").value = state.names.coach;
       document.getElementById("signatureInput").value = state.signature;
@@ -1665,7 +1751,7 @@
       store.keywords.forEach((term) => {
         const chip = document.createElement("span");
         chip.className = "pill";
-        chip.textContent = term;
+        chip.textContent = displayKeywordLabel(term);
         chips.appendChild(chip);
       });
     }
@@ -2141,20 +2227,77 @@
       });
     }
 
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Audio konnte nicht gelesen werden."));
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function languageForTranscription() {
+      return (state.language || "").toLowerCase().startsWith("de") ? "de" : "";
+    }
+
+    function applyTranscriptToUi(target) {
+      if (!target) return;
+      const transcriptEl = document.getElementById("transcriptInput");
+      if (!transcriptEl) return;
+      const context = activeContextStore();
+      if (context && context.target === target) {
+        transcriptEl.value = target.transcript || "";
+      }
+    }
+
+    async function transcribeBlobViaApi(blob, target, speakerLabel = "") {
+      if (!blob || !target) return false;
+      try {
+        const audioBase64 = await blobToDataUrl(blob);
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audioBase64,
+            mimeType: blob.type || "audio/webm",
+            language: languageForTranscription()
+          })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) return false;
+        const spoken = String(result.text || "").trim();
+        if (!spoken) return false;
+        const prefix = speakerLabel ? `[${speakerLabel}] ` : "";
+        target.transcript = `${target.transcript ? `${target.transcript}\n` : ""}${prefix}${spoken}`;
+        applyTranscriptToUi(target);
+        state.micStatus = "Mikrofon gestoppt. Audio wurde transkribiert.";
+        render();
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
     async function startMic(target) {
-      if (state.micRunning) return;
+      if (state.micRunning) return true;
       if (!audioAllowedByAge()) {
         document.getElementById("micState").textContent = "Audio ist fuer diese Alterskategorie deaktiviert.";
-        return;
+        return false;
       }
       if (!state.consent.audio) {
         document.getElementById("micState").textContent = "Audio-Opt-in fehlt. Bitte zuerst Einwilligung setzen.";
-        return;
+        return false;
+      }
+      if (!window.isSecureContext) {
+        state.micStatus = "Mikrofon ist nur in sicherem Kontext verfuegbar. Bitte ueber localhost oder HTTPS oeffnen.";
+        render();
+        return false;
       }
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          document.getElementById("micState").textContent = "Mikrofon wird im Browser nicht unterstuetzt.";
-          return;
+          state.micStatus = "Mikrofon wird im Browser nicht unterstuetzt. Bitte Chrome/Edge auf localhost nutzen.";
+          render();
+          return false;
         }
         micRuntime.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         micRuntime.chunks = [];
@@ -2205,15 +2348,33 @@
           rec.onerror = () => {};
           micRuntime.recognition = rec;
           rec.start();
+        } else {
+          state.micStatus = "Mikrofon laeuft ohne Live-Transkript. Beim Stop wird Server-Transkription versucht.";
         }
 
         state.micRunning = true;
-        state.micStatus = "Mikrofon laeuft.";
+        if (SpeechApi) state.micStatus = "Mikrofon laeuft.";
         render();
+        return true;
       } catch (error) {
+        const errorName = String(error && error.name ? error.name : "");
+        const errorMessage = String(error && error.message ? error.message : "");
+        if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+          state.micStatus = "Mikrofonzugriff wurde abgelehnt. Bitte Browser-Berechtigung erlauben.";
+        } else if (errorName === "NotFoundError") {
+          state.micStatus = "Kein Mikrofon gefunden. Bitte Geraet pruefen.";
+        } else if (errorName === "NotReadableError") {
+          state.micStatus = "Mikrofon kann nicht gelesen werden (oft durch anderes Programm blockiert).";
+        } else if (errorName === "SecurityError") {
+          state.micStatus = "Sicherheitsblockade: Seite bitte ueber localhost oder HTTPS oeffnen.";
+        } else {
+          state.micStatus = errorMessage
+            ? `Mikrofon konnte nicht gestartet werden (${errorMessage}).`
+            : "Mikrofon konnte nicht gestartet werden.";
+        }
         state.micRunning = false;
-        state.micStatus = "Mikrofon konnte nicht gestartet werden.";
         render();
+        return false;
       }
     }
 
@@ -2222,14 +2383,28 @@
       state.micRunning = false;
       state.sampleRecordingKind = null;
       state.micStatus = "Mikrofon gestoppt.";
+      const targetRef = micRuntime.target;
+      const speechAvailable = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+      const speakerLabel = state.mode === "coach" ? state.activeSpeaker : "";
       if (micRuntime.recognition) {
         try { micRuntime.recognition.stop(); } catch (error) {}
       }
       if (micRuntime.recorder) {
-        micRuntime.recorder.onstop = () => {
+        micRuntime.recorder.onstop = async () => {
           const blob = micRuntime.chunks.length > 0 ? new Blob(micRuntime.chunks, { type: micRuntime.chunks[0].type || "audio/webm" }) : null;
           if (saveBlobTarget && blob) saveBlobTarget.blob = blob;
           micRuntime.chunks = [];
+          if (!blob || !targetRef) return;
+          const transcriptEmpty = !String(targetRef.transcript || "").trim();
+          const shouldTranscribe = !speechAvailable || transcriptEmpty;
+          if (!shouldTranscribe) return;
+          state.micStatus = "Audio wird transkribiert ...";
+          render();
+          const ok = await transcribeBlobViaApi(blob, targetRef, speakerLabel);
+          if (!ok && !speechAvailable) {
+            state.micStatus = "Keine Live-Spracherkennung im Browser und Server-Transkription nicht verfuegbar.";
+            render();
+          }
         };
         try { micRuntime.recorder.stop(); } catch (error) {}
       }
@@ -2244,6 +2419,8 @@
     }
 
     async function toggleSample(kind) {
+      readIntroForm();
+      document.getElementById("introError").textContent = "";
       if (!audioAllowedByAge()) {
         document.getElementById("introError").textContent = "Unter 13 Jahre: Stimmprobe ist deaktiviert.";
         return;
@@ -2267,7 +2444,13 @@
         return;
       }
       const temp = { transcript: "", notes: "", keywords: [] };
-      await startMic(temp);
+      const started = await startMic(temp);
+      if (!started || !state.micRunning) {
+        state.sampleRecordingKind = null;
+        target.__temp = null;
+        render();
+        return;
+      }
       state.sampleRecordingKind = kind;
       state.micStatus = `Stimmprobe ${kind} laeuft.`;
       render();
@@ -2305,7 +2488,7 @@
       return PHASES.every((phase) => state.phases[phase.id].mainDone);
     }
 
-    function goToNextPhase() {
+    async function goToNextPhase() {
       syncContextInputsToStore();
       const phaseStore = currentPhaseStore();
       if (!phaseStore.mainDone) {
@@ -2320,7 +2503,7 @@
         render();
         return;
       }
-      buildSentence();
+      await prepareSummaryWithCloudFallback("sessionState");
       setView("summary");
     }
 
@@ -2350,6 +2533,189 @@
       render();
     }
 
+    function uniqueTerms(values) {
+      const list = Array.isArray(values) ? values : [];
+      return list
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .filter((item, index, arr) => arr.findIndex((x) => normalizeText(x) === normalizeText(item)) === index);
+    }
+
+    function collectMainAnswersForAi() {
+      const phaseText = (phaseId) => {
+        const phaseStore = state.phases[phaseId];
+        const main = [phaseStore.transcript, phaseStore.notes].filter(Boolean).join("\n");
+        const modules = Object.values(phaseStore.modules || {})
+          .map((module) => {
+            const selected = Array.isArray(module.selected) ? module.selected.join(" ") : "";
+            return [module.transcript, module.notes, module.customText, selected].filter(Boolean).join(" ");
+          })
+          .filter(Boolean)
+          .join("\n");
+        return [main, modules].filter(Boolean).join("\n").trim();
+      };
+
+      return {
+        S: phaseText("S"),
+        T: phaseText("T"),
+        A: phaseText("A"),
+        R: phaseText("R")
+      };
+    }
+
+    function splitStatements(text) {
+      return String(text || "")
+        .replace(/\[[^\]]+\]/g, " ")
+        .split(/[\n.!?;]+/g)
+        .map((item) => item.replace(/\s+/g, " ").trim())
+        .filter((item) => item.length >= 12)
+        .slice(0, 8);
+    }
+
+    function meaningfulStatementsForPhase(phaseId, maxCount = 2) {
+      const answers = collectMainAnswersForAi();
+      const terms = keywordBundleForPhase(phaseId).map((term) => normalizeText(term));
+      const statements = splitStatements(answers[phaseId]);
+      const scored = statements.map((statement) => {
+        const normalized = normalizeText(statement);
+        const score = terms.reduce((sum, term) => sum + (term && normalized.includes(term) ? 1 : 0), 0);
+        return { statement, score };
+      });
+      return scored
+        .sort((a, b) => b.score - a.score)
+        .map((item) => item.statement)
+        .slice(0, maxCount);
+    }
+
+    function buildLocalMeaning() {
+      const s = pickTerms(keywordBundleForPhase("S"), 3, "Staerken");
+      const t = pickTerms(keywordBundleForPhase("T"), 3, "Lebendigkeit");
+      const a = pickTerms(keywordBundleForPhase("A"), 3, "tragende Bedingungen");
+      const r = pickTerms(keywordBundleForPhase("R"), 3, "Wirksamkeit");
+      const overlaps = computeOverlaps().slice(0, 4).map((item) => displayKeywordLabel(item.label));
+      const originalHints = [
+        ...meaningfulStatementsForPhase("S", 1),
+        ...meaningfulStatementsForPhase("T", 1),
+        ...meaningfulStatementsForPhase("A", 1),
+        ...meaningfulStatementsForPhase("R", 1)
+      ];
+
+      const overlapText = overlaps.length
+        ? `Wiederkehrend zeigen sich ${joinNatural(overlaps)}.`
+        : "Die vier Bereiche zeigen erste Anknuepfungspunkte, aber noch wenige klare Wiederholungen.";
+      const summary = [
+        `Eine vorsichtige Lesart ist: Hier verbindet sich ${joinNatural(s)} mit ${joinNatural(t)}.`,
+        `Damit diese Spur traegt, scheinen ${joinNatural(a)} wichtig zu sein.`,
+        `Nach aussen will sie eher in Richtung ${joinNatural(r)} wirksam werden.`,
+        overlapText,
+        originalHints.length ? `Nahe am Gesagten bleiben besonders diese Hinweise: ${originalHints.map((item) => `"${item}"`).join(" / ")}.` : ""
+      ].filter(Boolean).join(" ");
+
+      const hypotheses = [
+        `Eine moegliche Spur koennte sein, dass ${joinNatural(s)} nicht fuer sich allein steht, sondern dort lebendig wird, wo ${joinNatural(t)} und ${joinNatural(r)} zusammenkommen.`,
+        `Es wirkt, als brauche diese Richtung nicht nur Aufgabe und Sinn, sondern auch passende Bedingungen wie ${joinNatural(a)}.`,
+        overlaps.length
+          ? `Die staerkste Ueberschneidung liegt bei ${joinNatural(overlaps)}; dort lohnt sich ein naechster kleiner Praxistest.`
+          : "Die naechste Frage sollte klaeren, welche Aussage sich koerperlich oder innerlich am stimmigsten anfuehlt."
+      ];
+
+      state.meaningSummary = summary;
+      state.meaningHypotheses = hypotheses;
+      buildCoreKeywords();
+    }
+
+    function applyCloudAnalysis(analysis) {
+      const clusters = (analysis && analysis.clusters) || {};
+      const phaseClusterMap = {
+        S: clusters.koennen || [],
+        T: clusters.lebendigkeit || [],
+        A: clusters.resonanz_beduerfnisse || [],
+        R: clusters.beitrag_wirksamkeit || []
+      };
+
+      Object.entries(phaseClusterMap).forEach(([phaseId, terms]) => {
+        const phaseStore = state.phases[phaseId];
+        phaseStore.keywords = uniqueTerms([...(Array.isArray(terms) ? terms : []), ...(phaseStore.keywords || [])]).slice(0, 12);
+      });
+
+      const aiOptions = uniqueTerms(analysis.klarstarter_satz_entwuerfe || []).slice(0, 4);
+      if (aiOptions.length > 0) {
+        state.sentenceOptions = aiOptions;
+        state.selectedSentenceOption = 0;
+        state.sentence = aiOptions[0];
+        state.sentenceApproved = false;
+      }
+      if (analysis.luecken_analyse) state.lueckenAnalyse = String(analysis.luecken_analyse).trim();
+      if (analysis.empfohlene_vertiefungsfrage) state.empfehlteVertiefungsfrage = String(analysis.empfohlene_vertiefungsfrage).trim();
+      if (analysis.meaning_summary) state.meaningSummary = String(analysis.meaning_summary).trim();
+      if (Array.isArray(analysis.sinn_hypothesen)) state.meaningHypotheses = uniqueTerms(analysis.sinn_hypothesen).slice(0, 4);
+      if (Array.isArray(analysis.kernstichworte_10)) state.coreKeywords = uniqueTerms(analysis.kernstichworte_10).filter((term) => keywordQuality(term)).slice(0, 10);
+      if (!state.coreKeywords || state.coreKeywords.length === 0) buildCoreKeywords();
+      state.redAlert = Boolean(state.redAlert || analysis.red_alert);
+      state.lastAnalysisSource = "cloud";
+    }
+
+    async function runCloudAnalysis() {
+      const response = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: state.sessionId || createSessionId(),
+          provider: state.aiProvider,
+          model: state.aiModel || AI_DEFAULT_MODELS[state.aiProvider],
+          ageCategory: state.ageCategory,
+          flowVariant: state.flowVariant,
+          aliases: {
+            client: state.names.client,
+            coach: state.mode === "coach" ? state.names.coach : ""
+          },
+          consent: state.consent,
+          answers: collectMainAnswersForAi()
+        })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok || !result.analysis) {
+        throw new Error(result && result.error ? result.error : "Cloud-Analyse nicht verfuegbar.");
+      }
+      applyCloudAnalysis(result.analysis);
+    }
+
+    async function prepareSummaryWithCloudFallback(statusNodeId = "sessionState") {
+      const statusNode = document.getElementById(statusNodeId);
+      try {
+        state.lastCloudError = "";
+        statusNode.textContent = "KI-Auswertung laeuft ...";
+        await runCloudAnalysis();
+        const aiGap = state.lueckenAnalyse;
+        const aiQuestion = state.empfehlteVertiefungsfrage;
+        buildGapAndRiskAnalysis();
+        if (aiGap) state.lueckenAnalyse = aiGap;
+        if (aiQuestion) state.empfehlteVertiefungsfrage = aiQuestion;
+        if (!state.sentence || !state.sentenceOptions || state.sentenceOptions.length === 0) buildSentence();
+        statusNode.textContent = `KI-Auswertung von ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT"} abgeschlossen.`;
+      } catch (error) {
+        state.lastAnalysisSource = "lokal";
+        state.lastCloudError = error instanceof Error ? error.message : "Cloud-KI nicht erreichbar.";
+        buildSentence();
+        statusNode.textContent = `Cloud-KI nicht aktiv: ${friendlyCloudError(state.lastCloudError)} Lokale Ersatzanalyse wurde verwendet.`;
+      }
+    }
+
+    function friendlyCloudError(message) {
+      const text = String(message || "");
+      const normalized = normalizeText(text);
+      if (normalized.includes("quota") || normalized.includes("billing") || normalized.includes("exceeded")) {
+        return "OpenAI meldet zu wenig Guthaben oder ein Abrechnungs-/Quota-Problem.";
+      }
+      if (normalized.includes("openai_api_key")) {
+        return "Der OpenAI-Schluessel fehlt auf Vercel.";
+      }
+      if (normalized.includes("gemini_api_key")) {
+        return "Der Gemini-Schluessel fehlt auf Vercel.";
+      }
+      return text || "Bitte Vercel-Umgebungsvariablen und KI-Anbieter pruefen.";
+    }
+
     function keywordBundleForPhase(phaseId) {
       const phaseStore = state.phases[phaseId];
       const all = [...phaseStore.keywords];
@@ -2360,9 +2726,51 @@
       return unique;
     }
 
+    const DISPLAY_KEYWORDS = {
+      "ruhe": "Ruhe",
+      "sicherheit": "Sicherheit",
+      "planbarkeit": "Planbarkeit",
+      "freiheit": "Freiheit",
+      "klarheit": "Klarheit",
+      "vertrauen": "Vertrauen",
+      "zuverlaessigkeit": "Zuverlaessigkeit",
+      "selbststaendigkeit": "Selbststaendigkeit",
+      "beziehung": "Beziehung",
+      "zugehoerigkeit": "Zugehoerigkeit",
+      "beratung": "Beratung",
+      "menschen": "Menschenkontakt",
+      "menschenkontakt": "Menschenkontakt",
+      "zuhoeren": "Zuhoeren",
+      "begleiten": "Begleiten",
+      "strukturieren": "Strukturieren",
+      "organisieren": "Organisieren",
+      "staerken": "Menschen staerken",
+      "entlasten": "Entlasten",
+      "klaeren": "Klaeren",
+      "kreativitaet": "Kreativitaet",
+      "gestaltung": "Gestaltung",
+      "loesungsorientiert": "Loesungsorientierung",
+      "kreative problemloesung": "kreative Problemloesung",
+      "problemloesung": "Problemloesung",
+      "perspektivenwechsel": "Perspektivenwechsel",
+      "vernetztes denken": "vernetztes Denken",
+      "zusammenhaenge erkennen": "Zusammenhaenge erkennen",
+      "ideen verbinden": "Ideen verbinden",
+      "loesung": "Problemloesung",
+      "loesungen": "Problemloesung"
+    };
+
+    function displayKeywordLabel(term) {
+      const label = String(term || "").trim();
+      const key = normalizePhrase(label);
+      return DISPLAY_KEYWORDS[key] || label;
+    }
+
     function pickTerms(list, count, fallback) {
       if (!Array.isArray(list) || list.length === 0) return [fallback];
-      const picked = list.slice(0, count);
+      const picked = list.slice(0, count)
+        .map((item) => displayKeywordLabel(item))
+        .filter((item) => keywordQuality(item));
       return picked.length > 0 ? picked : [fallback];
     }
 
@@ -2402,6 +2810,59 @@
         .filter((entry) => entry.phases.size >= 2)
         .map((entry) => ({ label: entry.label, phaseCount: entry.phases.size }))
         .sort((a, b) => b.phaseCount - a.phaseCount || a.label.localeCompare(b.label));
+    }
+
+    function buildCoreKeywords() {
+      const answers = collectMainAnswersForAi();
+      const weighted = new Map();
+
+      function add(term, score) {
+        const label = displayKeywordLabel(term);
+        if (!keywordQuality(label)) return;
+        const key = semanticKey(label) || normalizeText(label);
+        if (!key) return;
+        const existing = weighted.get(key);
+        if (existing) {
+          existing.score += score;
+          if (score > existing.bestScore && label.length >= existing.label.length) {
+            existing.label = label;
+            existing.bestScore = score;
+          }
+          return;
+        }
+        weighted.set(key, { label, score, bestScore: score });
+      }
+
+      PHASES.forEach((phase) => {
+        const raw = answers[phase.id] || "";
+        inferSemanticKeywords(raw, phase.id).forEach((term, index) => add(term, 60 - index * 2));
+        extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id }).forEach((term, index) => add(term, 35 - index));
+        keywordBundleForPhase(phase.id).forEach((term, index) => add(term, 24 - Math.min(index, 12)));
+      });
+
+      computeOverlaps().forEach((item, index) => {
+        add(item.label, 28 + item.phaseCount * 6 - index);
+      });
+
+      const allAnswers = Object.values(answers).join("\n");
+      const broadLexicon = [
+        ...STRENGTH_WORDS,
+        ...flattenValues(THEME_GROUPS),
+        ...flattenValues(NEED_GROUPS),
+        ...flattenValues(CONTRIBUTION_GROUPS),
+        ...ROLE_WORDS,
+        ...TARGET_GROUPS
+      ];
+      extractKeywords(allAnswers, broadLexicon, { phaseId: "" }).forEach((term, index) => add(term, 18 - index));
+
+      const result = Array.from(weighted.values())
+        .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+        .map((entry) => entry.label)
+        .filter((term, index, arr) => arr.findIndex((item) => normalizeText(item) === normalizeText(term)) === index)
+        .slice(0, 10);
+
+      state.coreKeywords = result;
+      return result;
     }
 
     function getPhaseKeywordCount(phaseId) {
@@ -2487,6 +2948,9 @@
           "Das Gespraech enthaelt Hinweise auf eine moegliche akute Belastung. Bitte keine weitere KI-Verdichtung, sondern direkte Weiterleitung an geeignete Fachstellen."
         ];
       }
+      if (state.lastAnalysisSource !== "cloud" || !state.meaningSummary) {
+        buildLocalMeaning();
+      }
 
       const s = keywordBundleForPhase("S");
       const t = keywordBundleForPhase("T");
@@ -2498,10 +2962,13 @@
       const interests = joinNatural(pickTerms(t, 3, "deine Interessen"));
       const needs = joinNatural(pickTerms(a, 3, "deine Bedingungen"));
       const contributions = joinNatural(pickTerms(r, 3, "deinen Beitrag"));
-      const overlapTerms = joinNatural(overlaps.slice(0, 4).map((item) => item.label));
+      const overlapTerms = joinNatural(overlaps.slice(0, 4).map((item) => displayKeywordLabel(item.label)));
       const overlapLine = overlapTerms
         ? `Wiederkehrend ueber mehrere Bereiche sind: ${overlapTerms}.`
         : "Es zeigen sich erste Verbindungen zwischen deinen Aussagen in den vier Bereichen.";
+      const meaningLine = state.meaningSummary
+        ? `Sinnverdichtung: ${state.meaningSummary}`
+        : "";
 
       const actionStep = state.flowVariant === "quick"
         ? "Ich teste diese Spur innerhalb der naechsten 24 Stunden in einem kleinen, konkreten Schritt."
@@ -2514,10 +2981,10 @@
       const feelingWord = pickTerms(t, 1, "Energie")[0];
 
       const options = [
-        `Mir ist wichtig, dass ${contributions} geschieht. Ich kann dazu beitragen, weil ich ${strengths} mitbringe. Lebendig werde ich, wenn ${interests} moeglich ist. Damit es mir dabei gut geht, brauche ich ${needs}. ${actionStep} ${overlapLine}`,
+        `Mir ist wichtig, dass ${contributions} geschieht. Ich kann dazu beitragen, weil ich ${strengths} mitbringe. Lebendig werde ich, wenn ${interests} moeglich ist. Damit es mir dabei gut geht, brauche ich ${needs}. ${actionStep} ${overlapLine} ${meaningLine}`,
         `In meiner Arbeit und in meinem Leben ist mir wichtig, dass ${contributions} Raum bekommt. Ich spuere, dass ich dazu beitragen kann, weil ich ${strengths} einbringen kann. Lebendig werde ich, wenn ${interests} moeglich ist. Damit dieser Weg tragfaehig bleibt, brauche ich ${needs}. ${actionStep} ${overlapLine}`,
-        `In dieser Welt ist mir wichtig, dass ${contributions} geschieht. Ich spuere, dass ich dazu beitragen kann, weil ich ${strengths} gezielt einsetzen kann. Wenn ich das tue, fuehle ich ${feelingWord}, weil mir ${valueWord} wichtig ist. Damit ich auf diesem Weg lebendig bleibe, achte ich darauf, dass ich genug ${needs} erhalte. Mein erster mutiger Schritt ab morgen ist: ${actionStepShort}.`,
-        `Dein Profil zeigt eine moegliche Spur: Mit ${strengths} willst du in ${interests} wirksam werden. Wichtig ist dir dabei ${needs}. Fuer andere soll dadurch ${contributions} entstehen. ${overlapLine} ${state.empfehlteVertiefungsfrage}`
+        `In dieser Welt ist mir wichtig, dass ${contributions} geschieht. Ich spuere, dass ich dazu beitragen kann, weil ich ${strengths} gezielt einsetzen kann. Wenn ich das tue, fuehle ich ${feelingWord}, weil mir ${valueWord} wichtig ist. Damit ich auf diesem Weg lebendig bleibe, achte ich darauf, dass ich genug ${needs} erhalte. Mein erster mutiger Schritt ab morgen ist: ${actionStepShort}. ${state.meaningHypotheses[0] || ""}`,
+        `Dein Profil zeigt eine moegliche Spur: Mit ${strengths} willst du in ${interests} wirksam werden. Wichtig ist dir dabei ${needs}. Fuer andere soll dadurch ${contributions} entstehen. ${overlapLine} ${state.meaningHypotheses[1] || state.empfehlteVertiefungsfrage}`
       ];
 
       return options
@@ -2615,6 +3082,9 @@
         `Coach Alias: ${state.mode === "coach" ? (state.names.coach || "-") : "solo"}`,
         `Alterskategorie: ${state.ageCategory}`,
         `Modus: ${state.flowVariant}`,
+        `KI-Anbieter: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT (OpenAI)"}`,
+        `KI-Modell: ${state.aiModel || "-"}`,
+        `Auswertungsquelle: ${state.lastAnalysisSource === "cloud" ? "Cloud-KI" : "lokale Analyse"}`,
         `KI-Hinweis: KI-Strukturierung, keine automatisierte Einzelfallentscheidung.`,
         lineBreak
       ];
@@ -2623,7 +3093,7 @@
         const words = keywordBundleForPhase(phase.id);
         lines.push(`${phase.id} - ${phase.label}`);
         lines.push(`Hauptfrage: ${phase.mainQuestion}`);
-        lines.push(`Begriffe: ${words.join(", ") || "-"}`);
+        lines.push(`Begriffe: ${words.map((item) => displayKeywordLabel(item)).join(", ") || "-"}`);
         lines.push("");
       });
       lines.push(lineBreak);
@@ -2636,6 +3106,12 @@
       lines.push(state.empfehlteVertiefungsfrage || "-");
       lines.push("Risikoanalyse:");
       lines.push(state.risikoAnalyse || "-");
+      lines.push("Sinnverdichtung:");
+      lines.push(state.meaningSummary || "-");
+      lines.push("10 Kernstichworte:");
+      (state.coreKeywords && state.coreKeywords.length ? state.coreKeywords : buildCoreKeywords()).forEach((item) => lines.push(item));
+      lines.push("Moegliche Deutungen:");
+      (state.meaningHypotheses && state.meaningHypotheses.length ? state.meaningHypotheses : ["-"]).forEach((item) => lines.push(item));
       if (needDefinitionLines.length > 0) {
         lines.push("");
         lines.push("Beduerfnis-Definitionen:");
@@ -2673,6 +3149,11 @@
       state.lueckenAnalyse = "";
       state.risikoAnalyse = "";
       state.empfehlteVertiefungsfrage = "";
+      state.meaningSummary = "";
+      state.meaningHypotheses = [];
+      state.coreKeywords = [];
+      state.lastAnalysisSource = "lokal";
+      state.lastCloudError = "";
       state.redAlert = false;
       state.sessionId = "";
       if (!keepMessage) document.getElementById("summaryState").textContent = "";
@@ -2699,7 +3180,7 @@
         const row = document.createElement("div");
         row.className = "summary-row";
         const terms = keywordBundleForPhase(phase.id);
-        row.innerHTML = `<strong>${phase.id} - ${phase.label}</strong><br>${terms.join(", ") || "-"}`;
+        row.innerHTML = `<strong>${phase.id} - ${phase.label}</strong><br>${terms.map((item) => displayKeywordLabel(item)).join(", ") || "-"}`;
         rows.appendChild(row);
       });
 
@@ -2710,6 +3191,20 @@
       document.getElementById("gapAnalysisText").textContent = state.lueckenAnalyse || "-";
       document.getElementById("recommendedQuestionText").textContent = state.empfehlteVertiefungsfrage || "-";
       document.getElementById("riskAnalysisText").textContent = state.risikoAnalyse || "-";
+      document.getElementById("analysisSourceLine").textContent = state.lastAnalysisSource === "cloud"
+        ? `Analysequelle: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT"} (${state.aiModel || "-"})`
+        : "Analysequelle: lokal";
+      document.getElementById("localAnalysisWarning").textContent = state.lastAnalysisSource === "cloud"
+        ? ""
+        : `Hinweis: Das ist nur die lokale Ersatzanalyse. ${state.lastCloudError ? friendlyCloudError(state.lastCloudError) : "Fuer ChatGPT-Qualitaet muss die Online-Version den KI-Endpunkt erreichen."}`;
+      document.getElementById("meaningSummaryText").textContent = state.meaningSummary || "-";
+      if (!state.coreKeywords || state.coreKeywords.length === 0) buildCoreKeywords();
+      document.getElementById("coreKeywordsText").textContent = state.coreKeywords && state.coreKeywords.length
+        ? state.coreKeywords.join(", ")
+        : "-";
+      document.getElementById("meaningHypothesesText").textContent = state.meaningHypotheses && state.meaningHypotheses.length
+        ? state.meaningHypotheses.join(" | ")
+        : "-";
 
       const optionsWrap = document.getElementById("sentenceOptions");
       optionsWrap.innerHTML = "";
@@ -2843,13 +3338,13 @@
       render();
     });
 
-    document.getElementById("nextPhaseBtn").addEventListener("click", () => {
+    document.getElementById("nextPhaseBtn").addEventListener("click", async () => {
       if (state.activePhaseIndex === PHASES.length - 1 && currentPhaseStore().mainDone) {
-        buildSentence();
+        await prepareSummaryWithCloudFallback("sessionState");
         setView("summary");
         return;
       }
-      goToNextPhase();
+      await goToNextPhase();
     });
 
     document.getElementById("transcriptInput").addEventListener("input", () => {
@@ -2859,10 +3354,12 @@
       syncContextInputsToStore();
     });
 
-    document.getElementById("regenerateSentenceBtn").addEventListener("click", () => {
-      buildSentence();
+    document.getElementById("regenerateSentenceBtn").addEventListener("click", async () => {
+      await prepareSummaryWithCloudFallback("summaryState");
       renderSummary();
-      document.getElementById("summaryState").textContent = "Satz neu formuliert.";
+      if (state.lastAnalysisSource === "lokal") {
+        document.getElementById("summaryState").textContent = "Satz lokal neu formuliert.";
+      }
     });
 
     document.getElementById("approveSentenceBtn").addEventListener("click", () => {
@@ -2896,6 +3393,20 @@
 
     document.getElementById("flowVariantSelect").addEventListener("change", (event) => {
       state.flowVariant = event.target.value;
+    });
+
+    document.getElementById("aiProviderSelect").addEventListener("change", (event) => {
+      const previousDefault = AI_DEFAULT_MODELS[state.aiProvider] || "";
+      const currentModel = (state.aiModel || "").trim();
+      state.aiProvider = event.target.value;
+      if (!currentModel || currentModel === previousDefault) {
+        state.aiModel = AI_DEFAULT_MODELS[state.aiProvider];
+      }
+      renderIntro();
+    });
+
+    document.getElementById("aiModelInput").addEventListener("input", (event) => {
+      state.aiModel = event.target.value.trim();
     });
 
     document.getElementById("emergencyDeleteBtn").addEventListener("click", () => {
