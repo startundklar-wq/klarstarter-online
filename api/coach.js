@@ -22,6 +22,9 @@ Regeln:
 3) Nutze nur Inhalte aus dem Input, nichts erfinden.
 4) Wenn psychische Krise / suizidale Hinweise auftreten: red_alert=true setzen.
 5) Gib nur JSON zurueck, kein Markdown.
+6) Arbeite bedeutungsorientiert: Erkenne Sinnzusammenhaenge, Motive, Spannungen, Werte, Metaphern und Sprichwoerter. Uebersetze Sprichwoerter vorsichtig in moegliche Ressourcen oder Beduerfnisse.
+7) Die Klarstarter-Saetze sollen mehrere vollwertige, gehaltvolle Varianten sein. Keine extrem kurzen Slogans. Jede Variante soll Koennen, Lebendigkeit, Beduerfnisse und Beitrag verbinden.
+8) Erstelle genau 10 Kernstichworte. Diese muessen sinngemaess sein, nicht wortwoertlich. Beispiel: "um die Ecke denken" bedeutet eher "kreative Problemloesung", "Perspektivenwechsel" oder "loesungsorientiert" - nicht "Ecke" oder "denken".
 
 JSON-Format:
 {
@@ -32,9 +35,12 @@ JSON-Format:
     "beitrag_wirksamkeit": ["..."]
   },
   "leuchtfeuer": "...",
+  "meaning_summary": "Eine kurze, vorsichtige Sinnverdichtung in 4-6 Saetzen. Nahe am Gesagten bleiben.",
+  "sinn_hypothesen": ["Eine moegliche Deutung koennte sein ...", "..."],
+  "kernstichworte_10": ["10 sinngemaesse Kernbegriffe, keine Fuellwoerter"],
   "luecken_analyse": "...",
   "empfohlene_vertiefungsfrage": "...",
-  "klarstarter_satz_entwuerfe": ["...", "...", "..."],
+  "klarstarter_satz_entwuerfe": ["mehrsatzige Variante 1", "mehrsatzige Variante 2", "mehrsatzige Variante 3"],
   "red_alert": false
 }
 `;
@@ -126,6 +132,48 @@ function uniqueArray(values) {
   return out;
 }
 
+const LOW_VALUE_CORE_TERMS = new Set([
+  "kann", "gut", "denken", "ecke", "ecken", "sagen", "machen", "gehen", "kommen",
+  "einfach", "dinge", "sachen", "irgendwie", "halt", "beispiel", "thema", "antwort",
+  "menschen", "andere", "feststecken", "moechte", "wirksam", "indem", "staerke",
+  "schwierige", "lebendig", "finde", "finden", "gebe", "geben", "gibt", "kreative",
+  "vereinfache", "meiner", "meine", "meinem", "meinen", "deiner", "deine", "deinem",
+  "deinen", "seiner", "seine", "seinem", "seinen", "sehe", "sehen", "arbeit", "soll"
+]);
+
+function qualityCoreTerm(term) {
+  const key = normalizeText(term).replace(/[^a-z0-9\s]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!key) return false;
+  const parts = key.split(" ").filter(Boolean);
+  if (parts.length === 1 && LOW_VALUE_CORE_TERMS.has(parts[0])) return false;
+  if (parts.every((part) => LOW_VALUE_CORE_TERMS.has(part))) return false;
+  if (parts.length === 1 && parts[0].length < 4 && !["mut", "ruhe", "sinn"].includes(parts[0])) return false;
+  return true;
+}
+
+function fallbackCoreKeywords(text, tokens) {
+  const normalized = normalizeText(text);
+  const semantic = [];
+  if (
+    normalized.includes("um die ecke denken") ||
+    normalized.includes("um den ecken denken") ||
+    normalized.includes("quer denken") ||
+    normalized.includes("querdenken") ||
+    normalized.includes("anders denken")
+  ) {
+    semantic.push("kreative Problemloesung", "Perspektivenwechsel", "loesungsorientiert");
+  }
+  if (normalized.includes("zusammenhaenge") || normalized.includes("muster erkennen") || normalized.includes("verknuepfen")) {
+    semantic.push("vernetztes Denken", "Zusammenhaenge erkennen");
+  }
+  if (normalized.includes("zuhoeren") || normalized.includes("zwischen den zeilen")) semantic.push("zuhoeren", "Empathie");
+  if (normalized.includes("struktur") || normalized.includes("ordnung") || normalized.includes("ueberblick")) semantic.push("strukturieren", "Klarheit");
+  if (normalized.includes("helfen") || normalized.includes("ermutigen") || normalized.includes("begleiten")) semantic.push("Menschen staerken", "begleiten");
+  return uniqueArray([...semantic, ...tokens])
+    .filter(qualityCoreTerm)
+    .slice(0, 10);
+}
+
 function fallbackFromInput(input) {
   const all = [input?.answers?.S, input?.answers?.T, input?.answers?.A, input?.answers?.R]
     .map((entry) => String(entry || ""))
@@ -135,8 +183,20 @@ function fallbackFromInput(input) {
     .split(/[^a-z0-9]+/g)
     .filter((token) => token.length > 3)
     .slice(0, 24);
+  const kernstichworte = fallbackCoreKeywords(all, tokens);
 
   const pick = (start) => uniqueArray(tokens.slice(start, start + 6));
+  const selected = (value, fallback) => String(value || "").trim().split(/[.!?\n]+/g).map((item) => item.trim()).filter(Boolean)[0] || fallback;
+  const strengthHint = selected(input?.answers?.S, "erste Ressourcen");
+  const lifeHint = selected(input?.answers?.T, "erste Interessen");
+  const needHint = selected(input?.answers?.A, "tragende Bedingungen");
+  const impactHint = selected(input?.answers?.R, "eine moegliche Wirkungsrichtung");
+  const meaningSummary = [
+    `Eine vorsichtige Lesart ist: ${strengthHint} verbindet sich mit ${lifeHint}.`,
+    `Damit diese Spur tragfaehig wird, scheinen ${needHint} wichtig zu sein.`,
+    `Nach aussen zeigt sich eine Richtung in ${impactHint}.`,
+    "Diese lokale Verdichtung ersetzt keine KI-Deutung; sie markiert nur erste Sinnlinien fuer das Coachinggespraech."
+  ].join(" ");
   return {
     clusters: {
       koennen: pick(0),
@@ -145,12 +205,19 @@ function fallbackFromInput(input) {
       beitrag_wirksamkeit: pick(18)
     },
     leuchtfeuer: tokens[0] || "erste Spur",
+    meaning_summary: meaningSummary,
+    sinn_hypothesen: [
+      "Eine moegliche Deutung koennte sein, dass die genannten Staerken dort lebendig werden, wo Interesse und Beitrag zusammenkommen.",
+      "Es lohnt sich zu pruefen, welche Bedingung unbedingt stimmen muss, damit diese Spur nicht nur sinnvoll, sondern auch tragfaehig bleibt.",
+      "Der naechste Schritt sollte die Aussage testen, die beim Kunden am meisten Resonanz ausloest."
+    ],
+    kernstichworte_10: kernstichworte,
     luecken_analyse: "Automatische Fallback-Analyse: Bitte Ergebnisse im Coachinggespraech pruefen.",
     empfohlene_vertiefungsfrage: "Welche Aussage fuehlt sich fuer dich am wichtigsten und stimmigsten an?",
     klarstarter_satz_entwuerfe: [
-      "Eine moegliche Spur koennte sein, dass du deine Staerken in einem stimmigen Umfeld fuer andere wirksam einsetzt.",
-      "Es faellt auf, dass Ressourcen, Interessen und Beitrag bereits sichtbar sind; der naechste kleine Schritt kann diese Spur pruefen.",
-      "Eine erste Richtung entsteht dort, wo deine Lebendigkeit und tragfaehigen Bedingungen zusammenkommen."
+      `${meaningSummary} Eine moegliche Spur koennte sein, diese Verbindung in einem kleinen realen Schritt zu pruefen.`,
+      `Es faellt auf, dass Ressourcen, Interessen und Beitrag bereits sichtbar sind. Wichtig bleibt zu klaeren, welche Bedingungen diesen Weg wirklich tragfaehig machen.`,
+      `Eine erste Richtung entsteht dort, wo das Genannte nicht nur spannend klingt, sondern Energie gibt, zu den eigenen Beduerfnissen passt und fuer andere einen kleinen Unterschied machen kann.`
     ],
     red_alert: containsRedAlert(all)
   };
@@ -169,6 +236,9 @@ function normalizeAnalysis(parsed, fallback) {
       beitrag_wirksamkeit: uniqueArray(clusters.beitrag_wirksamkeit || fb.clusters.beitrag_wirksamkeit).slice(0, 10)
     },
     leuchtfeuer: String(safe.leuchtfeuer || fb.leuchtfeuer || "").trim(),
+    meaning_summary: String(safe.meaning_summary || fb.meaning_summary || "").trim(),
+    sinn_hypothesen: uniqueArray(safe.sinn_hypothesen || fb.sinn_hypothesen).slice(0, 4),
+    kernstichworte_10: uniqueArray(safe.kernstichworte_10 || fb.kernstichworte_10).filter(qualityCoreTerm).slice(0, 10),
     luecken_analyse: String(safe.luecken_analyse || fb.luecken_analyse || "").trim(),
     empfohlene_vertiefungsfrage: String(safe.empfohlene_vertiefungsfrage || fb.empfohlene_vertiefungsfrage || "").trim(),
     klarstarter_satz_entwuerfe: uniqueArray(safe.klarstarter_satz_entwuerfe || fb.klarstarter_satz_entwuerfe).slice(0, 4),
@@ -199,7 +269,9 @@ function buildUserPrompt(input) {
     "",
     "Aufgabe:",
     "Ordne die Aussagen in die vier Cluster.",
-    "Nenne Leuchtfeuer, Lueckenanalyse, Vertiefungsfrage und 3-4 Klarstarter-Satzentwuerfe.",
+    "Verdichte zusaetzlich den Sinn des Gesagten: Motive, Werte, Spannungen, wiederkehrende Bilder, Sprichwoerter und innere Logik.",
+    "Nenne Leuchtfeuer, meaning_summary, sinn_hypothesen, genau 10 sinngemaesse Kernstichworte, Lueckenanalyse, Vertiefungsfrage und 3-4 Klarstarter-Satzentwuerfe.",
+    "Wichtig: Kernstichworte sind Bedeutungsbegriffe. Redewendungen nicht wortwoertlich zerlegen.",
     "Antwort nur als JSON gemaess Schema."
   ].join("\n");
 }
