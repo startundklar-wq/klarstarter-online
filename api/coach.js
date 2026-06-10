@@ -24,7 +24,8 @@ Regeln:
 5) Gib nur JSON zurueck, kein Markdown.
 6) Arbeite bedeutungsorientiert: Erkenne Sinnzusammenhaenge, Motive, Spannungen, Werte, Metaphern und Sprichwoerter. Uebersetze Sprichwoerter vorsichtig in moegliche Ressourcen oder Beduerfnisse.
 7) Die Klarstarter-Saetze sollen mehrere vollwertige, gehaltvolle Varianten sein. Keine extrem kurzen Slogans. Jede Variante soll Koennen, Lebendigkeit, Beduerfnisse und Beitrag verbinden.
-8) Erstelle genau 10 Kernstichworte. Diese muessen sinngemaess sein, nicht wortwoertlich. Beispiel: "um die Ecke denken" bedeutet eher "kreative Problemloesung", "Perspektivenwechsel" oder "loesungsorientiert" - nicht "Ecke" oder "denken".
+8) Erstelle genau 10 Sinnzusammenhaenge. Das sind kurze, gehaltvolle Aussagezeilen, keine Einzelwoerter. Jede Zeile verbindet mindestens zwei Aspekte aus dem Gesagten, z.B. Staerke + Wirkung, Interesse + Beduerfnis oder Bildsprache + moeglicher Beitrag.
+9) Uebersetze Redewendungen sinngemaess. Beispiel: "um die Ecke denken" kann bedeuten: kreative Problemloesung, Perspektivenwechsel, Komplexitaet neu rahmen. Schreibe daraus eine Aussage wie: "Kreative Problemloesung wird zur Staerke, wenn unklare Situationen neu gerahmt werden."
 
 JSON-Format:
 {
@@ -37,7 +38,7 @@ JSON-Format:
   "leuchtfeuer": "...",
   "meaning_summary": "Eine kurze, vorsichtige Sinnverdichtung in 4-6 Saetzen. Nahe am Gesagten bleiben.",
   "sinn_hypothesen": ["Eine moegliche Deutung koennte sein ...", "..."],
-  "kernstichworte_10": ["10 sinngemaesse Kernbegriffe, keine Fuellwoerter"],
+  "sinnzusammenhaenge_10": ["10 kurze Sinnzusammenhaenge als Aussagezeilen, keine Einzelwoerter"],
   "luecken_analyse": "...",
   "empfohlene_vertiefungsfrage": "...",
   "klarstarter_satz_entwuerfe": ["mehrsatzige Variante 1", "mehrsatzige Variante 2", "mehrsatzige Variante 3"],
@@ -174,6 +175,27 @@ function fallbackCoreKeywords(text, tokens) {
     .slice(0, 10);
 }
 
+function fallbackSenseConnections(input, coreTerms) {
+  const selected = (value, fallback) => String(value || "").trim().split(/[.!?\n]+/g).map((item) => item.trim()).filter(Boolean)[0] || fallback;
+  const strengthHint = selected(input?.answers?.S, "erste Ressourcen");
+  const lifeHint = selected(input?.answers?.T, "erste Interessen");
+  const needHint = selected(input?.answers?.A, "tragende Bedingungen");
+  const impactHint = selected(input?.answers?.R, "eine moegliche Wirkungsrichtung");
+  const terms = uniqueArray(coreTerms).slice(0, 6);
+  return uniqueArray([
+    `Die genannte Staerke zeigt sich darin, dass ${strengthHint} als Ressource sichtbar wird.`,
+    `Lebendigkeit entsteht dort, wo ${lifeHint} mit den eigenen Staerken verbunden wird.`,
+    `Die Spur bleibt tragfaehig, wenn ${needHint} als Bedingung ernst genommen wird.`,
+    `Nach aussen zeigt sich ein Beitrag in Richtung ${impactHint}.`,
+    terms[0] ? `${terms[0]} wirkt wie ein wiederkehrendes Motiv im Gesagten.` : "",
+    terms[1] ? `${terms[1]} koennte ein Hinweis darauf sein, wie die Person denkt oder handelt.` : "",
+    terms[2] ? `${terms[2]} verbindet sich mit der Frage, wo Energie und Wirkung zusammenkommen.` : "",
+    terms[3] ? `${terms[3]} sollte in einem naechsten kleinen Praxistest beobachtet werden.` : "",
+    "Ein sinnvoller naechster Schritt prueft nicht nur ein Interesse, sondern auch die passenden Bedingungen.",
+    "Die Deutung bleibt ein Angebot und sollte im Gespraech mit der Person geprueft werden."
+  ].filter(Boolean)).slice(0, 10);
+}
+
 function fallbackFromInput(input) {
   const all = [input?.answers?.S, input?.answers?.T, input?.answers?.A, input?.answers?.R]
     .map((entry) => String(entry || ""))
@@ -184,6 +206,7 @@ function fallbackFromInput(input) {
     .filter((token) => token.length > 3)
     .slice(0, 24);
   const kernstichworte = fallbackCoreKeywords(all, tokens);
+  const sinnzusammenhaenge = fallbackSenseConnections(input, kernstichworte);
 
   const pick = (start) => uniqueArray(tokens.slice(start, start + 6));
   const selected = (value, fallback) => String(value || "").trim().split(/[.!?\n]+/g).map((item) => item.trim()).filter(Boolean)[0] || fallback;
@@ -211,6 +234,7 @@ function fallbackFromInput(input) {
       "Es lohnt sich zu pruefen, welche Bedingung unbedingt stimmen muss, damit diese Spur nicht nur sinnvoll, sondern auch tragfaehig bleibt.",
       "Der naechste Schritt sollte die Aussage testen, die beim Kunden am meisten Resonanz ausloest."
     ],
+    sinnzusammenhaenge_10: sinnzusammenhaenge,
     kernstichworte_10: kernstichworte,
     luecken_analyse: "Automatische Fallback-Analyse: Bitte Ergebnisse im Coachinggespraech pruefen.",
     empfohlene_vertiefungsfrage: "Welche Aussage fuehlt sich fuer dich am wichtigsten und stimmigsten an?",
@@ -238,6 +262,7 @@ function normalizeAnalysis(parsed, fallback) {
     leuchtfeuer: String(safe.leuchtfeuer || fb.leuchtfeuer || "").trim(),
     meaning_summary: String(safe.meaning_summary || fb.meaning_summary || "").trim(),
     sinn_hypothesen: uniqueArray(safe.sinn_hypothesen || fb.sinn_hypothesen).slice(0, 4),
+    sinnzusammenhaenge_10: uniqueArray(safe.sinnzusammenhaenge_10 || safe.kernstichworte_10 || fb.sinnzusammenhaenge_10).slice(0, 10),
     kernstichworte_10: uniqueArray(safe.kernstichworte_10 || fb.kernstichworte_10).filter(qualityCoreTerm).slice(0, 10),
     luecken_analyse: String(safe.luecken_analyse || fb.luecken_analyse || "").trim(),
     empfohlene_vertiefungsfrage: String(safe.empfohlene_vertiefungsfrage || fb.empfohlene_vertiefungsfrage || "").trim(),
@@ -270,8 +295,8 @@ function buildUserPrompt(input) {
     "Aufgabe:",
     "Ordne die Aussagen in die vier Cluster.",
     "Verdichte zusaetzlich den Sinn des Gesagten: Motive, Werte, Spannungen, wiederkehrende Bilder, Sprichwoerter und innere Logik.",
-    "Nenne Leuchtfeuer, meaning_summary, sinn_hypothesen, genau 10 sinngemaesse Kernstichworte, Lueckenanalyse, Vertiefungsfrage und 3-4 Klarstarter-Satzentwuerfe.",
-    "Wichtig: Kernstichworte sind Bedeutungsbegriffe. Redewendungen nicht wortwoertlich zerlegen.",
+    "Nenne Leuchtfeuer, meaning_summary, sinn_hypothesen, genau 10 Sinnzusammenhaenge, Lueckenanalyse, Vertiefungsfrage und 3-4 Klarstarter-Satzentwuerfe.",
+    "Wichtig: Sinnzusammenhaenge sind kurze Aussagezeilen, keine Einzelwoerter. Redewendungen nicht wortwoertlich zerlegen, sondern als Bedeutung erklaeren.",
     "Antwort nur als JSON gemaess Schema."
   ].join("\n");
 }
