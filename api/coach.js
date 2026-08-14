@@ -6,7 +6,7 @@ const CORS_HEADERS = {
 
 const DEFAULT_MODELS = {
   openai: "gpt-5.2",
-  gemini: "gemini-2.0-flash"
+  gemini: "gemini-3.6-flash"
 };
 
 const RED_ALERT_TERMS = [
