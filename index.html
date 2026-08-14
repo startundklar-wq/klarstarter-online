@@ -3057,19 +3057,154 @@
       state.sentenceApproved = false;
     }
 
+    function pdfSafeText(text) {
+      return String(text || "")
+        .replace(/ä/g, "ae")
+        .replace(/ö/g, "oe")
+        .replace(/ü/g, "ue")
+        .replace(/Ä/g, "Ae")
+        .replace(/Ö/g, "Oe")
+        .replace(/Ü/g, "Ue")
+        .replace(/ß/g, "ss")
+        .replace(/[“”]/g, "\"")
+        .replace(/[‘’]/g, "'")
+        .replace(/[–—]/g, "-")
+        .replace(/\u2026/g, "...")
+        .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "");
+    }
+
     function escapePdfText(text) {
-      return text
+      return pdfSafeText(text)
         .replace(/\\/g, "\\\\")
         .replace(/\(/g, "\\(")
         .replace(/\)/g, "\\)");
     }
 
-    function buildPdfBytes(lines) {
-      const pageLineLimit = 42;
-      const pages = [];
-      for (let i = 0; i < lines.length; i += pageLineLimit) {
-        pages.push(lines.slice(i, i + pageLineLimit));
+    function wrapPdfText(text, maxChars) {
+      const clean = pdfSafeText(text).replace(/\s+/g, " ").trim();
+      if (!clean) return ["-"];
+      const words = clean.split(" ");
+      const lines = [];
+      let line = "";
+
+      words.forEach((word) => {
+        if (word.length > maxChars) {
+          if (line) {
+            lines.push(line);
+            line = "";
+          }
+          for (let i = 0; i < word.length; i += maxChars) {
+            lines.push(word.slice(i, i + maxChars));
+          }
+          return;
+        }
+        const next = line ? `${line} ${word}` : word;
+        if (next.length > maxChars && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      });
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    function buildPdfBytes(blocks) {
+      const pageWidth = 595;
+      const pageHeight = 842;
+      const marginX = 46;
+      const topY = 800;
+      const bottomY = 48;
+      const contentWidth = pageWidth - (marginX * 2);
+      const pages = [[]];
+      let y = topY;
+
+      function currentPage() {
+        return pages[pages.length - 1];
       }
+
+      function newPage() {
+        pages.push([]);
+        y = topY;
+      }
+
+      function ensureSpace(height) {
+        if (y - height < bottomY) newPage();
+      }
+
+      function addSpacer(height = 8) {
+        ensureSpace(height);
+        y -= height;
+      }
+
+      function addLine(text, options = {}) {
+        const size = options.size || 10;
+        const lineHeight = options.lineHeight || Math.round(size + 5);
+        const x = marginX + (options.indent || 0);
+        ensureSpace(lineHeight);
+        currentPage().push({
+          text: pdfSafeText(text || "-"),
+          size,
+          font: options.bold ? "F2" : "F1",
+          x,
+          y
+        });
+        y -= lineHeight;
+      }
+
+      function addWrappedText(text, options = {}) {
+        const size = options.size || 10;
+        const indent = options.indent || 0;
+        const maxChars = Math.max(24, Math.floor((contentWidth - indent) / (size * 0.54)));
+        String(text || "-")
+          .split(/\n+/g)
+          .forEach((paragraph, paragraphIndex) => {
+            if (paragraphIndex > 0) addSpacer(3);
+            wrapPdfText(paragraph, maxChars).forEach((line) => {
+              addLine(line, { ...options, size, indent });
+            });
+          });
+      }
+
+      function addDivider() {
+        addSpacer(5);
+        addLine("------------------------------------------------------------", { size: 8 });
+        addSpacer(5);
+      }
+
+      function addSection(title, body) {
+        addSpacer(5);
+        addLine(title, { size: 12, bold: true, lineHeight: 17 });
+        addWrappedText(body || "-", { size: 10, indent: 10, lineHeight: 15 });
+      }
+
+      function addListSection(title, entries) {
+        addSpacer(5);
+        addLine(title, { size: 12, bold: true, lineHeight: 17 });
+        const list = Array.isArray(entries) && entries.length ? entries : ["-"];
+        list.forEach((entry, index) => {
+          addWrappedText(`${index + 1}. ${entry}`, { size: 10, indent: 10, lineHeight: 15 });
+        });
+      }
+
+      blocks.forEach((block) => {
+        if (block.type === "title") {
+          addLine(block.text, { size: 18, bold: true, lineHeight: 24 });
+          if (block.subtext) addWrappedText(block.subtext, { size: 9, lineHeight: 13 });
+          addDivider();
+        } else if (block.type === "section") {
+          addSection(block.title, block.body);
+        } else if (block.type === "list") {
+          addListSection(block.title, block.items);
+        } else if (block.type === "meta") {
+          addWrappedText(block.text, { size: 9, lineHeight: 13 });
+        } else if (block.type === "divider") {
+          addDivider();
+        } else if (block.type === "spacer") {
+          addSpacer(block.height || 8);
+        }
+      });
 
       const objects = [];
       function addObject(content) {
@@ -3077,23 +3212,21 @@
         return objects.length;
       }
 
-      const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+      const regularFontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+      const boldFontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
       const pageIds = [];
       const contentIds = [];
 
-      pages.forEach((pageLines) => {
-        let stream = "BT\n/F1 11 Tf\n50 795 Td\n";
-        pageLines.forEach((line, index) => {
-          if (index === 0) {
-            stream += `(${escapePdfText(line)}) Tj\n`;
-          } else {
-            stream += `0 -17 Td (${escapePdfText(line)}) Tj\n`;
-          }
+      pages.forEach((pageLines, pageIndex) => {
+        let stream = "";
+        pageLines.forEach((line) => {
+          stream += `BT\n/${line.font} ${line.size} Tf\n1 0 0 1 ${line.x} ${line.y} Tm\n(${escapePdfText(line.text)}) Tj\nET\n`;
         });
-        stream += "ET";
-        const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+        stream += `BT\n/F1 8 Tf\n1 0 0 1 ${marginX} 28 Tm\n(${escapePdfText(`Klarstarter Ergebnisblatt - Seite ${pageIndex + 1} von ${pages.length}`)}) Tj\nET\n`;
+        const contentLength = new TextEncoder().encode(stream).length;
+        const contentId = addObject(`<< /Length ${contentLength} >>\nstream\n${stream}\nendstream`);
         contentIds.push(contentId);
-        const pageId = addObject("<< /Type /Page /Parent PAGES_REF /MediaBox [0 0 595 842] /Resources << /Font << /F1 FONT_REF 0 R >> >> /Contents CONTENT_REF 0 R >>");
+        const pageId = addObject("<< /Type /Page /Parent PAGES_REF /MediaBox [0 0 595 842] /Resources << /Font << /F1 FONT_REGULAR_REF 0 R /F2 FONT_BOLD_REF 0 R >> >> /Contents CONTENT_REF 0 R >>");
         pageIds.push(pageId);
       });
 
@@ -3104,7 +3237,8 @@
       pageIds.forEach((pageId, index) => {
         let content = objects[pageId - 1];
         content = content.replace("PAGES_REF", `${pagesId} 0 R`);
-        content = content.replace("FONT_REF", `${fontId}`);
+        content = content.replace("FONT_REGULAR_REF", `${regularFontId}`);
+        content = content.replace("FONT_BOLD_REF", `${boldFontId}`);
         content = content.replace("CONTENT_REF", `${contentIds[index]}`);
         objects[pageId - 1] = content;
       });
@@ -3128,55 +3262,54 @@
 
     function createPdfAndReset() {
       const date = new Date();
-      const lineBreak = "----------------------------------------";
       const needDefinitionLines = deriveNeedDefinitionLines();
-      const lines = [
-        "Klarstarter Ergebnis",
+      const source = state.lastAnalysisSource === "cloud" ? "Cloud-KI" : "lokale Analyse";
+      const metaLine = [
         `${date.toLocaleDateString("de-CH")} ${date.toLocaleTimeString("de-CH")}`,
-        lineBreak,
-        `Session-ID: ${state.sessionId || "-"}`,
         `Kunde Alias: ${state.names.client || "-"}`,
         `Coach Alias: ${state.mode === "coach" ? (state.names.coach || "-") : "solo"}`,
-        `Alterskategorie: ${state.ageCategory}`,
-        `Modus: ${state.flowVariant}`,
-        `KI-Anbieter: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT (OpenAI)"}`,
-        `KI-Modell: ${state.aiModel || "-"}`,
-        `Auswertungsquelle: ${state.lastAnalysisSource === "cloud" ? "Cloud-KI" : "lokale Analyse"}`,
-        `KI-Hinweis: KI-Strukturierung, keine automatisierte Einzelfallentscheidung.`,
-        lineBreak
+        `Auswertungsquelle: ${source}`
+      ].join(" | ");
+      const phaseBlocks = PHASES.map((phase) => {
+        const words = keywordBundleForPhase(phase.id)
+          .map((item) => displayKeywordLabel(item))
+          .join(", ") || "-";
+        return {
+          type: "section",
+          title: `${phase.id} - ${phase.label}`,
+          body: `Hauptfrage: ${phase.mainQuestion}\nBegriffe: ${words}`
+        };
+      });
+      const pdfBlocks = [
+        {
+          type: "title",
+          text: "Klarstarter Ergebnisblatt",
+          subtext: "Verdichtung aus Staerken, Interessen, Beitrag und tragenden Bedingungen. KI strukturiert nur; die Deutung bleibt bei Mensch und Kunde."
+        },
+        { type: "meta", text: metaLine },
+        { type: "divider" },
+        { type: "section", title: "Klarstarter Satz", body: state.sentence || "-" },
+        { type: "section", title: "Lueckenanalyse", body: state.lueckenAnalyse || "-" },
+        { type: "section", title: "Empfohlene Vertiefungsfrage", body: state.empfehlteVertiefungsfrage || "-" },
+        { type: "section", title: "Risikoanalyse", body: state.risikoAnalyse || "-" },
+        { type: "section", title: "Sinnverdichtung", body: state.meaningSummary || "-" },
+        { type: "list", title: "10 Sinnzusammenhaenge", items: state.coreKeywords && state.coreKeywords.length ? state.coreKeywords : buildCoreKeywords() },
+        { type: "list", title: "Moegliche Deutungen", items: state.meaningHypotheses && state.meaningHypotheses.length ? state.meaningHypotheses : ["-"] },
+        { type: "divider" },
+        { type: "section", title: "Ergebnisse pro Buchstabe", body: "Die folgenden Begriffe stammen aus den vier STAR-Bereichen der Schlussseite." },
+        ...phaseBlocks
       ];
 
-      PHASES.forEach((phase) => {
-        const words = keywordBundleForPhase(phase.id);
-        lines.push(`${phase.id} - ${phase.label}`);
-        lines.push(`Hauptfrage: ${phase.mainQuestion}`);
-        lines.push(`Begriffe: ${words.map((item) => displayKeywordLabel(item)).join(", ") || "-"}`);
-        lines.push("");
-      });
-      lines.push(lineBreak);
-      lines.push("Klarstarter Satz:");
-      lines.push(state.sentence || "-");
-      lines.push("");
-      lines.push("Lueckenanalyse:");
-      lines.push(state.lueckenAnalyse || "-");
-      lines.push("Empfohlene Vertiefungsfrage:");
-      lines.push(state.empfehlteVertiefungsfrage || "-");
-      lines.push("Risikoanalyse:");
-      lines.push(state.risikoAnalyse || "-");
-      lines.push("Sinnverdichtung:");
-      lines.push(state.meaningSummary || "-");
-      lines.push("10 Sinnzusammenhaenge:");
-      (state.coreKeywords && state.coreKeywords.length ? state.coreKeywords : buildCoreKeywords()).forEach((item) => lines.push(item));
-      lines.push("Moegliche Deutungen:");
-      (state.meaningHypotheses && state.meaningHypotheses.length ? state.meaningHypotheses : ["-"]).forEach((item) => lines.push(item));
       if (needDefinitionLines.length > 0) {
-        lines.push("");
-        lines.push("Beduerfnis-Definitionen:");
-        needDefinitionLines.forEach((item) => lines.push(item));
+        pdfBlocks.push({ type: "list", title: "Beduerfnis-Definitionen", items: needDefinitionLines });
       }
-      lines.push(lineBreak);
+      pdfBlocks.push({
+        type: "section",
+        title: "Hinweis",
+        body: `Session-ID: ${state.sessionId || "-"}\nAlterskategorie: ${state.ageCategory}. Modus: ${state.flowVariant}. KI-Anbieter: ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT (OpenAI)"}. KI-Modell: ${state.aiModel || "-"}. Das Ergebnis ist eine Orientierungshilfe und keine formelle Berufsberatung, Eignungsdiagnostik oder therapeutische Aussage. Nach der PDF-Erstellung werden die Sitzungsdaten in der App geloescht.`
+      });
 
-      const bytes = buildPdfBytes(lines);
+      const bytes = buildPdfBytes(pdfBlocks);
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
