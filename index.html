@@ -269,6 +269,11 @@
       border-color: var(--green);
     }
 
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     .chip-wrap {
       display: flex;
       flex-wrap: wrap;
@@ -823,9 +828,10 @@
               <textarea id="sentenceOutput" style="min-height:140px"></textarea>
             </div>
             <div class="btn-row">
+              <button class="btn secondary" id="editAnswersBtn" type="button">Antworten ergaenzen</button>
               <button class="btn secondary" id="regenerateSentenceBtn" type="button">Neu formulieren</button>
               <button class="btn good" id="approveSentenceBtn" type="button">Passt</button>
-              <button class="btn primary" id="pdfBtn" type="button">PDF erstellen</button>
+              <button class="btn primary" id="pdfBtn" type="button">PDF nach Freigabe erstellen</button>
             </div>
             <p class="ok" id="summaryState"></p>
           </section>
@@ -1235,6 +1241,7 @@
       coreKeywords: [],
       lastAnalysisSource: "lokal",
       lastCloudError: "",
+      analysisNeedsRefresh: false,
       redAlert: false
     };
 
@@ -1572,10 +1579,46 @@
       state.consent.ai = document.getElementById("consentAi").checked;
     }
 
+    function clearFinalDraftAfterAnswerChange() {
+      const hadFinalDraft = Boolean(
+        state.sentence ||
+        (state.sentenceOptions && state.sentenceOptions.length > 0) ||
+        state.meaningSummary ||
+        (state.coreKeywords && state.coreKeywords.length > 0) ||
+        state.lastAnalysisSource === "cloud"
+      );
+      state.analysisNeedsRefresh = hadFinalDraft;
+      state.sentenceApproved = false;
+      state.sentence = "";
+      state.sentenceOptions = [];
+      state.selectedSentenceOption = 0;
+      state.lueckenAnalyse = "";
+      state.risikoAnalyse = "";
+      state.empfehlteVertiefungsfrage = "";
+      state.meaningSummary = "";
+      state.meaningHypotheses = [];
+      state.coreKeywords = [];
+      state.lastAnalysisSource = "lokal";
+      state.lastCloudError = "";
+    }
+
+    function markContextChanged(context) {
+      if (!context || !context.target) return;
+      context.target.keywords = [];
+      if (context.type === "main") context.target.mainDone = false;
+      if (context.type === "module") context.target.done = false;
+      clearFinalDraftAfterAnswerChange();
+    }
+
     function syncContextInputsToStore() {
-      const store = activeContextStore().target;
-      store.transcript = document.getElementById("transcriptInput").value.trim();
-      store.notes = document.getElementById("noteInput").value.trim();
+      const context = activeContextStore();
+      const store = context.target;
+      const nextTranscript = document.getElementById("transcriptInput").value.trim();
+      const nextNotes = document.getElementById("noteInput").value.trim();
+      const changed = store.transcript !== nextTranscript || store.notes !== nextNotes;
+      store.transcript = nextTranscript;
+      store.notes = nextNotes;
+      if (changed) markContextChanged(context);
     }
 
     function fillContextInputsFromStore() {
@@ -1799,6 +1842,7 @@
       } else {
         moduleStore.selected.push(term);
       }
+      markContextChanged({ type: "module", target: moduleStore });
       render();
     }
 
@@ -2100,6 +2144,7 @@
       moduleStore.keywords = [...new Set([...(moduleStore.selected || []), ...extracted])].slice(0, 12);
       moduleStore.done = true;
       currentPhaseStore().deepenAsked = true;
+      clearFinalDraftAfterAnswerChange();
       document.getElementById("sessionState").textContent = `${moduleDef.id} gespeichert. Weitere Vertiefung moeglich.`;
       render();
     }
@@ -2280,6 +2325,10 @@
 
     async function startMic(target) {
       if (state.micRunning) return true;
+      if (state.view === "session") {
+        const context = activeContextStore();
+        if (context && context.target === target) markContextChanged(context);
+      }
       if (!audioAllowedByAge()) {
         document.getElementById("micState").textContent = "Audio ist fuer diese Alterskategorie deaktiviert.";
         return false;
@@ -2498,11 +2547,18 @@
         document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
         return false;
       }
-      if (!store.keywords || store.keywords.length === 0) {
-        const phase = currentPhase();
-        store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
-      }
+      const phase = currentPhase();
+      store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
       return true;
+    }
+
+    function refreshAllMainQuestionKeywords() {
+      PHASES.forEach((phase) => {
+        const store = state.phases[phase.id];
+        const raw = `${store.transcript || ""}\n${store.notes || ""}`;
+        store.keywords = extractKeywords(raw, flattenPhaseLexicon(phase), { phaseId: phase.id });
+        if (String(raw || "").trim()) store.mainDone = true;
+      });
     }
 
     async function goToNextPhase() {
@@ -2694,6 +2750,7 @@
 
     async function prepareSummaryWithCloudFallback(statusNodeId = "sessionState") {
       const statusNode = document.getElementById(statusNodeId);
+      refreshAllMainQuestionKeywords();
       try {
         state.lastCloudError = "";
         statusNode.textContent = "KI-Auswertung laeuft ...";
@@ -2704,11 +2761,13 @@
         if (aiGap) state.lueckenAnalyse = aiGap;
         if (aiQuestion) state.empfehlteVertiefungsfrage = aiQuestion;
         if (!state.sentence || !state.sentenceOptions || state.sentenceOptions.length === 0) buildSentence();
+        state.analysisNeedsRefresh = false;
         statusNode.textContent = `KI-Auswertung von ${state.aiProvider === "gemini" ? "Gemini" : "ChatGPT"} abgeschlossen.`;
       } catch (error) {
         state.lastAnalysisSource = "lokal";
         state.lastCloudError = error instanceof Error ? error.message : "Cloud-KI nicht erreichbar.";
         buildSentence();
+        state.analysisNeedsRefresh = false;
         statusNode.textContent = `Cloud-KI nicht aktiv: ${friendlyCloudError(state.lastCloudError)} Lokale Ersatzanalyse wurde verwendet.`;
       }
     }
@@ -3152,6 +3211,7 @@
       state.coreKeywords = [];
       state.lastAnalysisSource = "lokal";
       state.lastCloudError = "";
+      state.analysisNeedsRefresh = false;
       state.redAlert = false;
       state.sessionId = "";
       if (!keepMessage) document.getElementById("summaryState").textContent = "";
@@ -3203,6 +3263,7 @@
       document.getElementById("meaningHypothesesText").textContent = state.meaningHypotheses && state.meaningHypotheses.length
         ? state.meaningHypotheses.join(" | ")
         : "-";
+      document.getElementById("pdfBtn").disabled = !state.sentenceApproved;
 
       const optionsWrap = document.getElementById("sentenceOptions");
       optionsWrap.innerHTML = "";
@@ -3214,6 +3275,7 @@
         button.addEventListener("click", () => {
           state.selectedSentenceOption = index;
           state.sentence = optionText;
+          state.sentenceApproved = false;
           document.getElementById("sentenceOutput").value = optionText;
           renderSummary();
           document.getElementById("summaryState").textContent = `Variante ${index + 1} uebernommen.`;
@@ -3244,7 +3306,7 @@
         ? "Vertiefungen wurden bereits geoeffnet. Erledigte Module sind abgehakt."
         : "Wenn keine Vertiefung noetig ist, direkt zur naechsten Hauptfrage.";
       document.getElementById("nextPhaseBtn").textContent = state.activePhaseIndex === PHASES.length - 1
-        ? "Auswertung anzeigen"
+        ? (state.analysisNeedsRefresh ? "Auswertung aktualisieren" : "Auswertung anzeigen")
         : "Naechste Hauptfrage";
       if (state.redAlert) {
         document.getElementById("sessionState").textContent = "RED_ALERT_TRIGGER_THERAPEUTIC_REDIRECT";
@@ -3365,16 +3427,37 @@
       }
     });
 
+    document.getElementById("editAnswersBtn").addEventListener("click", () => {
+      state.sentenceApproved = false;
+      state.activeModuleId = null;
+      fillContextInputsFromStore();
+      resetTransientQuestionState();
+      setView("session");
+      document.getElementById("sessionState").textContent = "Antworten koennen ergaenzt werden. Danach Auswertung aktualisieren.";
+    });
+
     document.getElementById("approveSentenceBtn").addEventListener("click", () => {
       state.sentence = document.getElementById("sentenceOutput").value.trim();
       state.sentenceApproved = true;
       document.getElementById("summaryState").textContent = "Satz als passend markiert.";
+      renderSummary();
+    });
+
+    document.getElementById("sentenceOutput").addEventListener("input", (event) => {
+      state.sentence = event.target.value.trim();
+      state.sentenceApproved = false;
+      document.getElementById("pdfBtn").disabled = true;
+      document.getElementById("summaryState").textContent = "Merksatz geaendert. Bitte erneut mit Passt freigeben.";
     });
 
     document.getElementById("pdfBtn").addEventListener("click", () => {
       state.sentence = document.getElementById("sentenceOutput").value.trim();
       if (!state.sentence) {
         document.getElementById("summaryState").textContent = "Bitte zuerst einen Satz eintragen.";
+        return;
+      }
+      if (!state.sentenceApproved) {
+        document.getElementById("summaryState").textContent = "Bitte Satz zuerst gemeinsam freigeben: Passt.";
         return;
       }
       createPdfAndReset();
