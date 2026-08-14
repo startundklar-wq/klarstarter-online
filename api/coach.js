@@ -6,7 +6,7 @@ const CORS_HEADERS = {
 
 const DEFAULT_MODELS = {
   openai: "gpt-5.2",
-  gemini: "gemini-3.6-flash"
+  gemini: "gemini-3.5-flash-lite"
 };
 
 const RED_ALERT_TERMS = [
@@ -350,10 +350,7 @@ async function callGemini(model, userPrompt) {
       contents: [{
         role: "user",
         parts: [{ text: userPrompt }]
-      }],
-      generationConfig: {
-        temperature: 0.2
-      }
+      }]
     })
   });
 
