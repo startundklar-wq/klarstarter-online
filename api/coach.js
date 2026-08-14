@@ -335,7 +335,39 @@ async function callGemini(model, userPrompt) {
     throw new Error("GEMINI_API_KEY fehlt auf dem Server.");
   }
 
-  const modelName = model || DEFAULT_MODELS.gemini;
+  const requestedModel = normalizeGeminiModel(model);
+  try {
+    return await callGeminiModel(requestedModel, userPrompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (requestedModel !== DEFAULT_MODELS.gemini && isRetryableGeminiModelError(message)) {
+      return callGeminiModel(DEFAULT_MODELS.gemini, userPrompt);
+    }
+    throw error;
+  }
+}
+
+function normalizeGeminiModel(model) {
+  const raw = String(model || "").trim();
+  if (!raw) return DEFAULT_MODELS.gemini;
+  const normalized = raw.replace(/^models\//, "");
+  const retiredOrUnstable = new Set([
+    "gemini-2.0-flash",
+    "gemini-3.5-flash",
+    "gemini-3.6-flash"
+  ]);
+  return retiredOrUnstable.has(normalized) ? DEFAULT_MODELS.gemini : normalized;
+}
+
+function isRetryableGeminiModelError(message) {
+  const normalized = normalizeText(message);
+  return normalized.includes("no longer available") ||
+    normalized.includes("high demand") ||
+    normalized.includes("try again later") ||
+    normalized.includes("model is overloaded");
+}
+
+async function callGeminiModel(modelName, userPrompt) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
   const response = await fetch(url, {
     method: "POST",
